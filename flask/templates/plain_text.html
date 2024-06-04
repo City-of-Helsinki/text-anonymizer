@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+
+{% block title %}Vapaan tekstin anonymisointi{% endblock %}
+
+{% block content %}
+<div class="content">
+
+    <div class="hds-container content__container">
+
+        <div class="content__main">
+            <!-- Text Anonymization Form -->
+            <h2>Tekstin anonymisointi</h2>
+            <form action="{{ url_for('plain_text') }}" method="post">
+
+                <div class="hds-text-input">
+                    <label for="text" class="hds-text-input__label">Anonymisoitava teksti<span
+                            class="hds-text-input__required">*</span></label>
+                    <div class="hds-text-input__input-wrapper">
+                        <textarea id="text" name="text" rows="10" cols="50" class="hds-text-input__input"
+                                  placeholder="Liitä anonymisoitava teksti tähän" required>{{text}}</textarea>
+                    </div>
+
+                </div>
+
+                <div class="hds-text-input">
+                    <label for="user_languages" class="hds-text-input__label">Valitse aineiston kieli *:</label>
+                    <div class="hds-text-input__input-wrapper">
+                        <select id="user_languages" name="user_languages" multiple>
+                            {% for lang in languages %}
+                            {% if lang == 'fi' %}
+                            <option value="{{ lang }}" selected>{{ lang }}</option>
+                            {% else %}
+                            <option value="{{ lang }}">{{ lang }}</option>
+                            {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="hds-text-input">
+                    <label for="recognizers2" class="hds-text-input__label">Valitse käytettävät tunnistimet:</label>
+                    <div class="hds-text-input__input-wrapper">
+                        <select id="recognizers2" name="recognizers" multiple>
+                            {% for recognizer in recognizer_options %}
+                            <option value="{{ recognizer }}">{{ recognizer }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <span class="hds-text-input__helper-text">Oletuksena kaikki tunnistimet ovat valittu.</span>
+                </div>
+
+
+                <br>
+                <button type="submit" class="hds-button hds-button--primary">
+                    Anonymisoi teksti
+                </button>
+
+            </form>
+
+            <!-- Anonymized Text Display -->
+            {% if anonymized_text %}
+            <h3>Anonymisoitu teksti</h3>
+            <div class="hds-text-input">
+                <div class="hds-text-input__input-wrapper">
+                <textarea id="anonymized_text" name="text" rows="auto" cols="50" class="hds-text-input__input"
+                          placeholder="Anonymisoitu teksti" required>{{ anonymized_text }}</textarea>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

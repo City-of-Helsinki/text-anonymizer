@@ -1,0 +1,1003 @@
+Asumisympäristö
+Asuminen
+Asumisen sähköinen asiointi ja lomakkeet
+Asumisen tuet
+Asumisoikeusasuminen
+Kaupungin asumisoikeusasunnot
+Asuntotuotanto
+Vuokra-asuminen
+Kaupungin tai kunnan vuokra-asunnot
+Kaupungin tai kunnan työsuhdeasunnot
+Opiskelija-asunnot
+Eläimet
+Koira-alueet
+Koira-aitaukset
+Koirakäymälät
+Koirametsät
+Koirauimarannat
+Opaskoira-aitaukset
+Luonnonvaraisten eläinten hoitola
+Energia
+Asiakaspalvelu
+Energianeuvonta
+Voimalaitokset
+Hallinto
+Ympäristölautakunta
+Jätehuolto ja kierrätys
+Jäteasema
+Jätteenkäsittelykeskus
+Keräyspisteet
+Akkujen keräys
+Bio- ja puutarhajäte
+Energiajäte
+Kartonginkeräys
+Lamppujen keräys
+Lasinkeräys
+Metallinkeräys
+Muovinkeräys
+Pahvinkeräys
+Paperinkeräys
+Paristonkeräys
+Puujäte
+Sekajäte
+Sähkö- ja elektroniikkaromu
+Tekstiilien keräys
+Vaarallinen jäte
+Kierrätyskeskus
+Ongelmajäteasema
+Rantavesien ja sisäsaariston puhtaanapito
+Luonnonsuojelu
+Löytötavarapalvelu
+Matonpesupaikat
+Puistot ja viheralueet
+Kahluualtaat
+Koira-alueet
+Koira-aitaukset
+Koirakäymälät
+Koirametsät
+Koirauimarannat
+Opaskoira-aitaukset
+Leikkipuistot
+Ohjattu leikkipuistotoiminta
+Leikkipaikat (ei ohjattua toimintaa)
+Viheralueet
+Viheralueiden hoito
+Viljelyspalstat
+Tiet ja kadut
+Katu-, maa- ja viherrakentamispalvelut
+Katujen ja viheralueiden käyttöluvat ja vuokraus
+Katujen ja viheralueiden suunnittelu ja rakennuttaminen
+Katujen puhtaanapito ja talvikunnossapito
+Tierakenteiden tiiviys- ja kantavuusmittaus
+Torit ja kauppahallit
+Kauppahallit
+Kirpputorit
+Markkinat
+Torit
+Vesihuolto
+Jäteveden puhdistamo
+Mullan myynti ja toimitus
+Vedenpuhdistuslaitos
+Vesilaskut ja asiakaspalvelu
+Yleisövessat
+Ympäristökasvatus
+Luontokoulu
+Ympäristön hoito
+Metsät
+Puutarhapalvelut
+Ympäristön sähköinen asiointi ja lomakkeet
+Ympäristöneuvonta
+Ympäristöohjelmat
+Ympäristöterveydenhuolto
+Asumisterveys
+Elintarvikevalvonta
+Eläinlääkäripalvelut
+Eläinsuojelu
+Sisätilojen tuholaiset
+Talousveden valvonta
+Terveystarkastaja
+Tupakkalain valvonta
+Uimavesien valvonta
+Ympäristötutkimus ja tilastointi
+Maaperä ja vesi
+Pohjavesitiedot
+Sisäympäristö
+Ympäristöhaitat ja -luvat
+Ympäristönsuojelumääräykset
+Elinkeino, työ ja verotus
+Ammatinvalinnanohjaus
+Avoimet työpaikat
+Elinkeinoasiat
+Elinkeinopalvelujen sähköinen asiointi ja lomakkeet
+Eläkkeet
+Julkinen notaari
+Kaupanvahvistus
+Kauppa- ja yhdistysrekisteri
+Maan, tonttien ja asuntojen vuokraus ja myynti
+Kaupungin tai kunnan vuokra-asunnot
+Kaupungin tai kunnan työsuhdeasunnot
+Asuntotonttien vuokraus ja myynti
+Liike- ja toimistotonttien vuokraus ja myynti
+Maa-alueiden vuokraus ja myynti
+Markkinointi
+Elinkeinomarkkinointi
+Matkailumarkkinointi
+Tapahtumamarkkinointi
+Tilojen vuokraus ja varaus
+Kauppahallimyyntipaikkojen vuokraus
+Torimyyntipaikkojen vuokraus
+Vapaa-ajan tilojen vuokraus
+Harrastustilat
+Kokouspaikat
+Juhlatilat
+Nuorisotilat
+Tilaussaunat
+Liike- ja toimistotilojen vuokraus
+Tuotantotilojen vuokraus
+Varastotilojen vuokraus
+Pakastamotilojen vuokraus
+Teurastamotilojen vuokraus
+Vihertukkutilojen vuokraus
+Työ- ja elinkeinotoimistot
+Työsuhdeasiat
+Työttömyys
+Verotoimistot
+Alkavien yrittäjien neuvonta
+Maahanmuuttajayrittäjien neuvonta
+Hallinto ja talous
+Hallinto
+Hallinnon toimipisteet
+Postipalvelut
+Hankintapalvelut
+Keskitetyt tietotekniikkapalvelut
+Kirjaamo
+Kunnan henkilöstö
+Henkilöstöpolitiikka ja -strategia
+Henkilöstöravintolat
+Rekrytointi
+Kuulutukset
+Maahanmuutto
+Kelan etuudet
+Maahanmuuttajapalvelut
+Päätöksenteko
+Kaupunginhallituksen ja kaupunginvaltuuston valmistelutehtävät
+Kaupunginhallitus
+Kaupunginvaltuusto
+Lautakunnat ja johtokunnat
+Valtuustoryhmät, kansalaislähetystöt
+Talous
+Taloushallinto
+kirjanpito
+laskutuksen asiakasmaksut
+laskutus
+maksukattoasiat
+maksuliikenne
+ostolaskut
+palkanlaskenta
+suoritukset
+täsmäykset
+yleisökassa
+Varainhallinta
+antolainat
+henkilöstökassa
+konserniohjaus
+Tarkastus
+Sisäinen tarkastus
+Ulkoinen tarkastus
+Tuet ja avustukset
+Avustusten sähköinen asiointi ja lomakkeet
+Kaavoitus, kiinteistöt ja rakentaminen
+Kaavoitus
+Asiakaspalvelu
+Info- ja näyttelytilat
+Kaavat ja kaavoitus
+Liikennesuunnittelu
+Liikennesuunnittelu
+Liikenteen ohjaus, liikennevalot
+Nimistönsuunnittelu
+Viestintä ja vuorovaikutus
+Kiinteistöt ja rakennetut tilat
+Energia-avustukset
+Hallinto
+Hallintopalvelut
+Hankepalvelut
+Maastomittauspalvelut
+Hissiprojekti
+Kaupanvahvistus
+Kiinteistöhuolto ja isännöinti
+Kiinteistönmuodostus
+Kiinteistörekisteri
+Korjausavustukset ja -lainat
+Lainhuuto
+Maan, tonttien ja asuntojen vuokraus ja myynti
+Kaupungin tai kunnan vuokra-asunnot
+Kaupungin tai kunnan työsuhdeasunnot
+Asuntotonttien vuokraus ja myynti
+Liike- ja toimistotonttien vuokraus ja myynti
+Maa-alueiden vuokraus ja myynti
+Nuohous
+Siivouspalvelut
+Tilojen vuokraus ja varaus
+Kauppahallimyyntipaikkojen vuokraus
+Torimyyntipaikkojen vuokraus
+Vapaa-ajan tilojen vuokraus
+Harrastustilat
+Kokouspaikat
+Juhlatilat
+Nuorisotilat
+Tilaussaunat
+Pakastamotilojen vuokraus
+Teurastamotilojen vuokraus
+Vihertukkutilojen vuokraus
+Rakentaminen
+Asuntotuotanto
+Energia
+Asiakaspalvelu
+Energianeuvonta
+Voimalaitokset
+Katujen ja viheralueiden suunnittelu ja rakennuttaminen
+Korjausrakentaminen
+Rakennusvalvonta
+Jatkuva valvonta
+Rakennus- ja toimenpideluvat
+Rakennusrasitteet
+Rakennustöiden viranomaisvalvonta
+Rakennusvalvontamittaukset
+Rakentamisen sähköinen asiointi ja lomakkeet
+Suunnittelu- ja rakentamispalvelut
+Kaupungin toimitilojen suunnittelu
+Kilpipalvelut
+Materiaalipalvelut
+Pohja- ja kalliorakennussuunnittelu
+Vesihuolto
+Jäteveden puhdistamo
+Mullan myynti ja toimitus
+Vedenpuhdistuslaitos
+Vesilaskut ja asiakaspalvelu
+Yhdyskuntarakentaminen
+Aluerakentaminen
+Tiedotus
+Viestintä
+Kartat, tietopalvelut ja viestintä
+Arkistot
+Asemakaava-arkisto
+Kaupunginarkiston asiakaspalvelu
+Kiinteistörekisteri
+Rakennusvalvonnan arkisto
+Katu-, puisto- ja rakennuspiirustusten arkisto
+Asiakaspalvelu ja neuvonta
+Info- ja näyttelytilat
+Matkailuneuvonta
+Kasvatuksen ja koulutuksen neuvonta
+Sosiaali- ja terveyspalvelujen neuvonta
+Asiointipisteet, yleisneuvonta ja yhteispalvelu
+Kartat ja paikkatietopalvelut
+Johtotietopalvelu ja maanalaisten tilojen tietopalvelu
+Karttapalvelut, ilmakuvat ja karttojen tilaus
+Paikkatietoneuvonta ja -aineistot
+Kirjastot
+Erikoiskirjastot
+Laitoskirjastot
+Yleiset kirjastot
+Nettipisteet ja tietotekniikkapalvelut
+Langaton internet, wlan
+WLAN-sisäpisteet
+WLAN-ulkopisteet
+Tietokone ja internet
+Tarjolla oheislaitteita
+Multimedialaitteita
+Skanneri
+Tulostin
+Tarjolla opastusta
+Kurssimuotoista tietokoneopetusta
+Opastusta tietokoneen käytössä (digineuvonta)
+Tilastot ja tietopalvelut
+Kulttuuri ja vapaa-aika
+Kasvitieteelliset puutarhat
+Kirjastot
+Erikoiskirjastot
+Laitoskirjastot
+Yleiset kirjastot
+Kirkot ja muut uskonnolliset tilat
+Kulttuuripalvelujen sähköinen asiointi ja lomakkeet
+Kulttuuritilat
+Elokuvateatterit
+Konserttitilat
+Kulttuurin monitoimitalot
+Kurssitoiminta
+Näyttelytilat
+Ooppera ja baletti
+Tanssitilat
+Teatterit
+Matonpesupaikat
+Museot
+Kulttuurihistoriallinen museo
+Taidemuseo
+Nuoriso
+Nuorisotalot
+Katutaidepaikat
+Harrasteet
+Askartelu
+Av- ja leirivälinelainaamo
+Avoin nuorisotoiminta
+Biljardi
+Bänditoiminta/-tila
+Demostudio
+Fillari- ja moottoripaja
+Futsal
+Internet
+Jalkapallo
+Järjestötoiminta
+Keramiikka
+Kerhotoiminta
+Kesätoiminta
+Kokkikerho
+Konsolipelit
+Kuntosali
+Kuvataide
+Kädentaidot
+Käsityöt
+Lautapelit
+Leiritoiminta
+Liikunta
+Media
+Monistuspalvelu
+Moottorihalli
+Mopokerho
+Musiikki
+Pelit
+Pingis
+Poikakerho / poikaryhmät
+Puutyö
+Pyöräkoulu
+Pöytäfutis
+Pöytäjääkiekko
+Retkeily
+Skeittaus
+Soitonopetus
+Sähly
+Tanssi
+Tyttökerho / tyttöryhmät
+Valokuvaus
+Viikonlopputoiminta
+Nuorten neuvonta ja ohjaus
+Puistot ja viheralueet
+Kahluualtaat
+Koira-alueet
+Koira-aitaukset
+Koirakäymälät
+Koirametsät
+Koirauimarannat
+Opaskoira-aitaukset
+Leikkipuistot
+Ohjattu leikkipuistotoiminta
+Leikkipaikat (ei ohjattua toimintaa)
+Viheralueet
+Viljelyspalstat
+Ruoka - ja cateringpalvelut
+Vapaa-ajan tilojen vuokraus
+Harrastustilat
+Kokouspaikat
+Juhlatilat
+Nuorisotilat
+Tilaussaunat
+Liikenne
+Joukkoliikenne
+Asiakaspalvelu ja lipunmyynti
+Joukkoliikennepysäkit
+Julkisen liikenteen varikot
+Matkalippujen tarkastus
+Metroasemat
+Rautatieasemat
+Liikennesuunnittelu
+Liikennesuunnittelu
+Liikenteen ohjaus, liikennevalot
+Löytötavarapalvelu
+Pysäköinti
+Ajoneuvojen siirrot
+Asukas- ja yrityspysäköintitunnukset
+Pysäköinninvalvonta
+Pysäköintilippuautomaatit
+Yleiset pysäköintialueet
+Sähköautojen latauspisteet
+Tiet ja kadut
+Katu-, maa- ja viherrakentamispalvelut
+Katujen ja viheralueiden käyttöluvat ja vuokraus
+Katujen ja viheralueiden suunnittelu ja rakennuttaminen
+Katujen puhtaanapito ja talvikunnossapito
+Tierakenteiden tiiviys- ja kantavuusmittaus
+Vesiliikenne
+Satamat ja laiturit
+Hallintopalvelut
+Kansainvälisten risteilyalusten laiturit
+Terminaalit
+Venesatamat
+Veneily
+Ulkoilusaaret
+Veneiden talvisäilytys
+Liikunta
+Eläinurheilualueet
+Hevosurheilu
+Esteratsastuskenttä
+Ratsastuskenttä
+Ratsastusmaneesi
+Ravirata
+Maastoliikuntapaikat
+Ampumaurheilupaikat
+Ampumarata
+Ampumaurheilukeskus
+Jousiammuntamaastorata
+Jousiammuntarata
+Hyppyrimäet
+Harjoitushyppyrimäki
+Katetut talviurheilupaikat
+Curlingrata
+Hiihtotunneli
+Kiipeilypaikat
+Kiipeilykallio
+Ulkokiipeilyseinä
+Laskettelurinteet ja rinnehiihtokeskukset
+Laskettelun suorituspaikat
+Liikunta- ja ulkoilureitit
+Frisbeegolf-rata
+Hevosreitti
+Koirahiihtolatu
+Kuntorata
+Kävelyreitti
+Latu
+Luontopolku
+Maastopyöräilyreitti
+Melontareitti
+Retkeilyreitti
+Maastohiihtokeskukset
+Ampumahiihdon harjoittelualue
+Ampumahiihtokeskus
+Hiihtomaa
+Kilpahiihtokeskus
+Suunnistusalueet
+Suunnistusalue
+Sisäliikuntatilat
+Jäähallit
+Harjoitusjäähalli
+Kilpajäähalli
+Keilahallit
+Keilahalli
+Kuntoilukeskukset ja liikuntasalit
+Kamppailulajien sali
+Kuntokeskus
+Kuntosali
+Liikuntasali
+Voimailusali
+Liikuntahallit
+Jalkapallohalli
+Liikuntahalli
+Monitoimihalli / areena
+Petanque - halli
+Salibandyhalli
+Skeittihalli
+Squash-halli
+Sulkapallohalli
+Tennishalli
+Yksittäiset lajikohtaiset sisäliikuntapaikat
+Miekkailutila
+Parkour- Sali
+Pöytätennistila
+Sisäampumarata
+Sisäkiipeilyseinä
+Tanssitila
+Telinevoimistelutila
+Yksittäinen yleisurheilun suorituspaikka
+Ulkokentät ja liikuntapuistot
+Golfkentät
+Golfin harjoitusalue
+Golfin harjoitushalli
+Golfkenttä
+Ratagolf
+Jääurheilualueet ja luonnonjäät
+Kaukalo
+Luistelukenttä
+Luistelureitti
+Pikaluistelurata
+Tekojääkenttä
+Lähiliikunta ja liikuntapuistot
+Liikuntapuisto
+Lähiliikuntapaikka
+Parkour- alue
+Pyöräilyalue
+Pyöräilyrata
+Skeitti / rullaluistelupaikka
+Ulkokuntoiluvälineet
+Pallokentät
+Beachvolleykenttä
+Jalkapallostadion
+Koripallokenttä
+Lentopallokenttä
+Pallokenttä
+Pesäpallostadion
+Rullakiekkokenttä
+Tenniskenttäalue
+Yleisurheilukentät ja -paikat
+Yleisurheilukenttä
+Yleisurheilun harjoitusalue
+Vene-, ilmailu- ja moottoriurheilu
+Moottoriurheilualueet
+Jokamies- ja rallicross -rata
+Karting-rata
+Moottoripyöräilyalue
+Moottorirata
+Moottoriurheilukeskus
+Urheiluilmailualueet
+Urheiluilmailualue
+Veneurheilupaikat
+Soudun ja melonnan sisäharjoittelutila
+Soutustadion
+Vesihiihtoalue
+Vesiliikuntapaikat
+Maauimalat ja uimarannat
+Maauimala
+Talviuintipaikka
+Uimapaikka
+Uimaranta
+Uima-altaat, hallit ja kylpylät
+Kylpylä
+Uima-allas
+Uimahalli
+Virkistyskohteet ja palvelut
+Retkeilyn palvelut
+Kalastusalue / -paikka
+Laavu, kota tai kammi
+Luontotorni
+Opastuspiste
+Rantautumispaikka
+Ruoanlaittopaikka
+Telttailu ja leiriytyminen
+Tupa
+Ulkoilumaja / hiihtomaja
+Venesatama
+Virkistys- ja retkeilyalueet
+Matkailupalveluiden alue
+Monikäyttöalue, jolla on virkistyspalveluita
+Muu luonnonsuojelualue, jolla on virkistyspalveluita
+Retkeilyalue
+Ulkoilualue
+Virkistysmetsä
+Matkailu ja tapahtumat
+Matkailu
+Eläintarhat
+Eläintarha
+Lipunmyynti
+Luonnonvaraisten eläinten hoitola
+Ruokaa, juomaa ja ostoksia
+Kahvila
+Kauppa
+Kioski
+Ravintola
+Vesibussilaiturit
+Hotellit ja majoitus
+Juhlatilat
+Kahvilat
+Kaupat ja myymälät
+Kauppahallit
+Kioskit
+Kokouspaikat
+Leirintäalueet
+Matkailuneuvonta
+Museot
+Kulttuurihistoriallinen museo
+Taidemuseo
+Muut matkailupalvelut
+Nähtävyydet
+Ostospaikat
+Ravintolat
+Teatterit
+Torit
+Lipunmyynti tapahtumiin
+Oikeusturva ja demokratia
+Demokratia
+Päätöksenteko
+Kaupunginhallituksen ja kaupunginvaltuuston valmistelutehtävät
+Kaupunginhallitus
+Kaupunginvaltuusto
+Lautakunnat ja johtokunnat
+Valtuustoryhmät, kansalaislähetystöt
+Vaalit ja äänestäminen
+Keskusvaalilautakunta
+Järjestötoiminta
+Oikeusturva
+Avioliitto ja rekisteröity parisuhde
+Avioehto
+Parisuhteen rekisteröinti
+Siviilivihkiminen
+Edunvalvonta
+Kotikunta- ja väestötiedot
+Kuluttajansuoja ja neuvonta
+Nimiasiat
+Oikeusaputoimistot
+Perinnönjako
+Tuomioistuimet
+Perhe- ja sosiaalipalvelut
+Sosiaali- ja terveyspalvelujen ja ikääntyvien neuvonta
+Sosiaali- ja terveyspalvelujen neuvonta
+Ikääntyvien neuvonta
+Lastensuojelu
+Lastensuojelun sosiaalityö
+Lastensuojelun laitospalvelu
+Lastensuojelun perhehoito
+Muut perheiden palvelut
+Lapsiperheiden sosiaaliohjaus
+Perheneuvonta ja perheneuvolatoiminta
+Lapsiperheiden kotipalvelu
+Lapsiperheiden lomatoiminta
+Perheoikeudelliset palvelut
+Lapsiperheen tuet
+Vammaispalvelut
+Vammaispalvelun sosiaalityö
+Vammaispalvelun tukihenkilö
+Vammaispalvelun sosiaaliohjaus
+Vammaispalvelun päivätoiminta
+Vammaispalvelun asumispalvelut
+Vammaispalvelun tulkkipalvelu
+Vammaispalvelulain mukainen kuljetuspalvelu
+Vammaispalvelun omaishoidon tuki
+Vammaispalvelun asunnon muutostyöt
+Vammaispalvelun henkilökohtainen apu
+Vammaistuet ja -palvelut
+Kehitysvammahuolto
+Kehitysvammahuollon sosiaalityö
+Kehitysvammahuollon sosiaaliohjaus
+Kehitysvammahuollon päivätoiminta
+Kehitysvammahuollon työllistämispalvelut
+Kehitysvammahuollon asumispalvelut
+Kehitysvammahuollon laitospalvelu
+Kehitysvammahuollon loma- ja harrastustoiminta
+Kehitysvammahuollon taloudellinen tuki
+Vanhuspalvelu
+Vanhuspalvelun sosiaalityö
+Vanhuspalvelun sosiaaliohjaus
+Vanhusten päivätoiminta
+Vanhusten palvelukeskustoiminta
+Vanhusten itsenäinen asuminen
+Vanhusten palveluasuminen
+Vanhusten laitospalvelu
+Vanhuspalvelun omaishoidon tuki
+Vanhusten avopalvelutoiminta
+Kotihoito
+Päihdepalvelut
+Päihdehuollon sosiaalityö
+Päihdehuollon sosiaaliohjaus
+Päihdehuollon polikliininen hoito
+Päihdehuollon korvaushoito
+Päihdehuollon päivätoiminta
+Päihdehuollon asumispalvelut
+Päihdehuollon katkaisuhoito ja kuntoutus
+Selviämishoitoasema
+Toimeentulotuki
+Etuuskäsittely
+Perustoimeentulotuki
+Muu sosiaalihuolto
+Aikuisten sosiaalityö
+Alueellinen kumppanuustyö
+Aikuisten sosiaaliohjaus
+Mielenterveyskuntoutujien päivätoiminta
+Työhön kuntoutus- ja työllistämispalvelut
+Kuntouttava työtoiminta
+Muun sosiaalihuollon asumispalvelut
+Sosiaalihuoltolain mukainen kuljetuspalvelu
+Sosiaalinen luotto
+Työkykyselvitys pitkäaikaistyöttömille
+Sovittelutoiminta
+Maahanmuuttajapalvelut
+Talous- ja velkaneuvonta
+Yhteiset tukipalvelut
+Sosiaali- ja terveyspalvelujen turvapalvelut (asumisen tuki)
+Hoitoalan ruokapalvelut
+Hallinto
+Lasten päivähoito
+Päiväkotihoito
+Suomenkielinen päivähoito
+päivähoito
+iltahoito 17:30-22:00
+erityisryhmä
+kielikylpy ruotsi
+kielikylpy englanti
+esiopetus
+osapäiväryhmä
+Ruotsinkielinen päivähoito
+päivähoito
+iltahoito 17:30-22:00
+erityisryhmä
+esiopetus
+Saamenkielinen päivähoito
+päivähoito
+esiopetus
+Arabiankielinen päivähoito
+päivähoito
+esiopetus
+Englanninkielinen päivähoito
+päivähoito
+esiopetus
+Espanjankielinen päivähoito
+päivähoito
+esiopetus
+Hepreankielinen päivähoito
+päivähoito
+Ranskankielinen päivähoito
+päivähoito
+esiopetus
+Saksankielinen päivähoito
+päivähoito
+Venäjänkielinen päivähoito
+päivähoito
+Vironkielinen päivähoito
+päivähoito
+esiopetus
+Perhepäivähoito
+Perhepäivähoidon ohjausalue
+Suomenkielinen ryhmäperhepäivähoito
+Ruotsinkielinen ryhmäperhepäivähoito
+Venäjänkielinen ryhmäperhepäivähoito
+Leikkitoiminta
+Avoin toiminta
+Kehitysvammaisten iltapäivätoiminnan ryhmät
+Kerhotoiminta
+Koululaisten iltapäivätoiminnan ryhmät
+Ohjattu leikkipuistotoiminta
+Puistotäti
+Yksityisen hoidon tuki
+Päivähoidon sähköinen asiointi ja lomakkeet
+Terveys
+Sosiaali- ja terveyspalvelujen ja ikääntyvien neuvonta
+Sosiaali- ja terveyspalvelujen neuvonta
+Apteekki
+Terveysasemat
+Lääkärin vastaanotto
+Terveydenhoitajan vastaanotto
+Työterveyshuolto
+Hammashoito
+Kotihoito
+Koulu- ja opiskeluterveydenhuolto
+Tartuntaudit
+Myrkytystietoa
+Päivystys
+Aikuisten terveyskeskuspäivystys ja päivystyspoliklinikka
+Lasten terveyskeskuspäivystys ja päivystyspoliklinikka
+Päivystyksen vuodeosastot
+Neuvolat
+Lastenneuvola
+Perhesuunnittelu ja ehkäisyneuvola
+Kehitysvammapoliklinikka
+Sairaalat
+Yliopistolliset sairaalat
+Kaupungin psykiatrinen sairaala
+Kaupunginsairaalat
+Kotisairaalat
+Päiväsairaala
+Sairaaloiden poliklinikat
+Synnytyssairaalat
+Laboratorio
+Röntgen
+Mielenterveyspalvelut
+Akuuttipsykiatria
+HUS:n erikoissairaanhoito
+Kuntoutuspsykiatria
+Psykiatrian poliklinikat
+Psykiatrinen asumiskuntoutus
+Psykiatrinen perhehoito
+Psykiatrinen päiväsairaala
+Psykoterapia
+Kuntoutus
+Apuvälinepalvelut
+Fysioterapia
+Kuntoutuksen vuodeosastopalvelut
+Kuntoutussuunnittelu ja -ohjaus
+Lääkinnällinen kuntoutus
+Neurologia
+Puheterapia
+Rintamavetaraanien kuntoutus
+Toimintaterapia
+Ravitsemusterapia
+Jalkaterapia
+Psykologitoiminta
+Kuulontutkimus
+Omahoitotarvikejakelu
+Silmätaudit
+Hallintopalvelut
+Potilasasiamies
+Päihdepalvelut
+Päihdehuollon sosiaalityö
+Päihdehuollon sosiaaliohjaus
+Päihdehuollon polikliininen hoito
+Päihdehuollon korvaushoito
+Päihdehuollon päivätoiminta
+Päihdehuollon asumispalvelut
+Päihdehuollon katkaisuhoito ja kuntoutus
+Selviämishoitoasema
+Terveyspalvelujen sähköinen asiointi ja lomakkeet
+Turvallisuus
+Maanpuolustus
+Maanpuolustusyhdistykset
+Puolustusvoimat
+Meripelastus
+Muut turvallisuuspalvelut
+Turvallisuuskoulutus
+Sosiaali- ja terveyspalvelujen turvapalvelut (asumisen tuki)
+Muut turvapalvelut (kiinteistöt ja vartiointi)
+Pelastustoimi
+Nuohous
+Pelastusasemat
+Pelastuskoulu
+Sopimuspalokunnat
+Poliisi
+Poliisilaitokset ja -asemat
+Rajavartiolaitos
+Säteilyturva
+Tulli
+Tullin asiointipisteet
+Väestöhälyttimet
+Väestönsuojat
+Yhteiskalliosuojat
+Yleiset väestönsuojat
+Opetus ja koulutus
+Esiopetus
+Suomen- ja vieraskielinen esiopetus
+Päivähoidon järjestämä esiopetus
+Ruotsinkielinen esiopetus
+Päivähoidon järjestämä esiopetus
+Koulun järjestämä esiopetus
+Esi- ja starttiopetus
+Perusopetus
+Suomen- ja vieraskielinen perusopetus
+Luokkien 1-6 perusopetus
+suomenkielinen opetus
+englanninkielinen opetus
+ranskankielinen opetus
+saksankielinen opetus
+venäjänkielinen opetus
+Luokkien 7-9 perusopetus
+suomenkielinen opetus
+englanninkielinen opetus
+ranskankielinen opetus
+saksankielinen opetus
+venäjänkielinen opetus
+Lisäopetus (10. luokka)
+Kieliohjelma
+A1-ruotsi
+A1-englanti
+A1-espanja
+A1-kiina
+A1-ranska
+A1-saksa
+A1-venäjä
+A2-ruotsi
+A2-englanti
+A2-espanja
+A2-kiina
+A2-ranska
+A2-saksa
+A2-venäjä
+B1-ruotsi
+B1-englanti
+B2-espanja
+B2-italia
+B2-kiina
+B2-latina
+B2-ranska
+B2-saksa
+B2-venäjä
+Soveltuvuuskoepainotus
+1. luokalta alkava soveltuvuuskoepainotus
+3. luokalta alkava soveltuvuuskoepainotus
+7. luokalta alkava soveltuvuuskoepainotus
+Erityisluokkaopetus
+Ruotsin kielikylpyopetus
+Kansainvälinen opetus (IB)
+Iltapäivätoiminta
+Koulun järjestämät ryhmät
+Järjestöjen ja yhdistysten ryhmät
+Seurakuntien ryhmät
+Autististen ja kehitysvammaisten ryhmät
+Ruotsinkielinen perusopetus
+Luokkien 1-6 perusopetus
+ruotsinkielinen opetus
+Luokkien 7-9 perusopetus
+ruotsinkielinen opetus
+Lisäopetus (10. luokka)
+Kieliohjelma
+A1-suomi
+A2-englanti
+A2-ranska
+A2-saksa
+B1-suomi
+B2-englanti
+B2-espanja
+B2-kiina
+B2-latina
+B2-ranska
+B2-saksa
+B2-venäjä
+Soveltuvuuskoepainotus
+3. luokalta alkava soveltuvuuskoepainotus
+7. luokalta alkava soveltuvuuskoepainotus
+Erityisluokkaopetus
+Iltapäivätoiminta
+Koulun järjestämät ryhmät
+Järjestöjen ja yhdistysten ryhmät
+Seurakuntien ryhmät
+Sairaalaopetus
+Lukiokoulutus
+Suomen- ja vieraskielinen nuorten lukiokoulutus
+Suomenkielinen lukiokoulutus
+Englanninkielinen lukiokoulutus
+Lukion linja
+Yleislinjan lukiokoulutus
+Erityistehtävän mukainen lukiokoulutus
+Kieliohjelma
+A-suomi
+A-ruotsi
+A-englanti
+A-espanja
+A-kiina
+A-ranska
+A-saksa
+A-venäjä
+B-ruotsi
+B-englanti
+B-espanja
+B-italia
+B-japani
+B-kiina
+B-latina
+B-ranska
+B-saksa
+B-venäjä
+Painotettu lukio
+Ruotsinkielinen nuorten lukiokoulutus
+Ruotsinkielinen lukiokoulutus
+Lukion linja
+Yleislinjan lukiokoulutus
+Erityistehtävän mukainen lukiokoulutus
+Kieliohjelma
+A-suomi
+A-englanti
+A-ranska
+A-saksa
+B-suomi
+B-englanti
+B-espanja
+B-italia
+B-kiina
+B-ranska
+B-saksa
+B-venäjä
+Painotettu lukio
+Nuorten työpajatoiminta
+Aikuiskoulutus
+Suomen- ja vieraskielinen aikuisten perus- ja lukiokoulutus
+Aikuisten lukiokoulutus
+Aikuisten peruskoulutus
+Aikuisten lukioaineiden opetus
+Aikuisten peruskouluaineiden opetus
+Kaksoistutkinto
+Ruotsinkielinen aikuisten perus- ja lukiokoulutus
+Aikuisten lukiokoulutus
+Aikuisten peruskoulutus
+Aikuisten lukioaineiden opetus
+Aikuisten peruskouluaineiden opetus
+Oppisopimuskoulutus
+Suomenkielinen oppisopimuskoulutus
+Ruotsinkielinen oppisopimuskoulutus
+Ammattikorkeakoulut
+Suomenkielinen ammattikorkeakoulukoulutus
+Yliopistot
+Vapaa sivistystyö
+Suomenkielinen työväenopisto
+Asiakaspalvelu
+Opetuspaikat
+Ruotsinkielinen työväenopisto
+Asiakaspalvelu
+Opetuspaikat
+Kirjasto
+Kuvataidekoulu
+Helen
+Virta
+HSL

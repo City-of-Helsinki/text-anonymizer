@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+
+{% block title %}CSV-tiedoston anonymisointi{% endblock %}
+
+{% block content %}
+<div class="content">
+
+    <div class="hds-container content__container">
+
+        <div class="content__main">
+        <!-- CSV Anonymization Form -->
+        <h2 id="anonymize-csv">CSV-tiedoston anonymisointi</h2>
+        {% if error %}
+        <p style="color: red;">Virhe: {{ error }}</p>
+        {% endif %}
+        <form action="{{ url_for('csv') }}" method="post" enctype="multipart/form-data">
+
+            {% if phase == 'upload' %}
+
+                <div class="hds-text-input">
+                    <label for="file" class="hds-text-input__label">Lataa anonymisoitava CSV-tiedosto:</label>
+                    <div class="hds-text-input__input-wrapper">
+                        <input type="file" id="file" name="file" accept=".csv">
+                    </div>
+                </div>
+
+
+                <div class="hds-text-input">
+                    <label for="separator" class="hds-text-input__label">Erotinmerkki:</label>
+                    <div class="hds-text-input__input-wrapper">
+                        <select id="separator" name="separator">
+                            <option value=",">Pilkku (,)</option>
+                            <option value=";">Puolipiste (;)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="hds-text-input">
+                    <label for="encoding" class="hds-text-input__label">Tiedoston merkistö:</label>
+                    <div class="hds-text-input__input-wrapper">
+                        <input type="text" id="encoding" name="encoding" value="utf-8">
+                    </div>
+                </div>
+
+                 <button type="submit" class="hds-button hds-button--primary">
+                    Lataa tiedosto
+                </button>
+
+            {% endif %}
+
+            {% if phase == 'column_selection' %}
+
+                <div class="hds-text-input">
+                    <label for="user_languages" class="hds-text-input__label">Valitse aineiston kieli *:</label>
+                    <div class="hds-text-input__input-wrapper">
+                        <select id="user_languages" name="user_languages" multiple>
+                            {% for lang in languages %}
+                            {% if lang == 'fi' %}
+                            <option value="{{ lang }}" selected>{{ lang }}</option>
+                            {% else %}
+                            <option value="{{ lang }}">{{ lang }}</option>
+                            {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="hds-text-input">
+                    <label for="columns" class="hds-text-input__label">Valitse anonymisoitavat sarakkeet *:</label>
+                    <div class="hds-text-input__input-wrapper">
+                        <select id="columns" name="columns" multiple>
+                            {% for column in columns %}
+                            <option value="{{ column }}">{{ column }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="hds-text-input">
+                    <label for="recognizers1" class="hds-text-input__label">Valitse käytettävät tunnistimet:</label>
+                    <div class="hds-text-input__input-wrapper">
+                        <select id="recognizers1" name="recognizers" multiple>
+                            {% for recognizer in recognizer_options %}
+                            <option value="{{ recognizer }}">{{ recognizer }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <span class="hds-text-input__helper-text">Oletuksena kaikki tunnistimet ovat valittu.</span>
+                </div>
+
+                <button type="submit" class="hds-button hds-button--primary">
+                    Anonymisoi CSV
+                </button>
+
+            {% endif %}
+
+        </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,12 @@
+version: "3.8"
+services:
+  text_anonymizer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      MODE: ${MODE:-dev}
+    ports:
+      - 127.0.0.1:8000:8000 # fastapi http rest or flask webapp
+    volumes:
+      - ./:/app

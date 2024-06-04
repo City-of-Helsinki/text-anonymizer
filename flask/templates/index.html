@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+
+{% block title %}Tekstianonymisaattori etusivu{% endblock %}
+
+{% block content %}
+
+
+<section id="hero">
+    <div>
+        <div class="hds-hero custom-theme hds-hero--diagonal-koros">
+            <div class="hds-hero--with-background__container">
+                <div class="hds-hero__content">
+                    <div class="hds-hero--with-background__content-columns">
+                        <div class="hds-hero__card">
+                            <h1 class="hds-hero__title">Tekstianonymisaattori</h1>
+                            <p class="hds-hero__text">
+                                Työkalu vapaan tekstin ja csv-tiedostojen anonymisointiin.
+                            </p>
+<!--                            <a class="hds-button hds-button&#45;&#45;secondary hds-button&#45;&#45;theme-black black-button  button"-->
+<!--                               href="#anonymize-csv"><span class="hds-button__label">Aloita</span></a>-->
+                        </div>
+                        <div class="hds-hero--with-background__empty-column"></div>
+                    </div>
+                </div>
+                <div class="hds-hero--diagonal-koros__koros-aligner">
+                    <div class="hds-hero--diagonal-koros__koros-and-background">
+                        <div class="hds-hero__koros-container">
+                            <div class="hds-koros" style="fill: var(--koros-color);">
+                                <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" width="100%" height="85">
+                                    <defs>
+                                        <pattern id="koros_basic-5" x="0" y="0" width="106" height="85"
+                                                 patternUnits="userSpaceOnUse">
+                                            <path transform="scale(5.3)"
+                                                  d="M0,800h20V0c-4.9,0-5,2.6-9.9,2.6S5,0,0,0V800z"></path>
+                                        </pattern>
+                                    </defs>
+                                    <rect fill="url(#koros_basic-5)" width="100%" height="85"></rect>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="hds-hero--with-background__background">
+                    <img class="hds-hero__image" src="https://hds.hel.fi/images/homepage/amos58.jpg" aria-hidden="true"
+                         alt=""/>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+<div class="content">
+
+    <div class="hds-container content__container">
+
+        <div class="content__main">
+            <h2>Tekstianonymisaattori</h2>
+            <p>Tämä on anonymisointityökalu suomenkieliselle tekstille. Työkalu mahdollistaa automaattisen
+                henkilötunnistimien, kuten nimien, puhelinnumeroiden ja sosiaaliturvatunnusten tunnistamisen
+                suomalaisessa kontekstissa. Työkalu peittää havaitut entiteetit kuvaavilla tunnisteilla, esim.
+                "050-12341234" korvataan tunnisteella PHONENUMBER.
+            </p>
+            <p>
+                Tämä web-työkalu pystyy vapaata tekstiä ja CSV-muodossa olevia tiedostoja. Sovellus ei tallenna eikä lokita mitään käsiteltyjä tietoja.
+            </p>
+
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+

@@ -1,0 +1,7 @@
+pandas
+fastapi
+flask
+flask-session
+gunicorn
+uvicorn
+asgiref

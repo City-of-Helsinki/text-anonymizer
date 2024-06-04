@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+
+{% block title %}Tekstitiedoston anonymisointi{% endblock %}
+
+{% block content %}
+<div class="content">
+
+    <div class="hds-container content__container">
+
+        <div class="content__main">
+        <!-- CSV Anonymization Form -->
+        <h2 id="anonymize-txt">Tekstitiedoston anonymisointi</h2>
+        {% if error %}
+        <p style="color: red;">Virhe: {{ error }}</p>
+        {% endif %}
+        <form action="{{ url_for('text_file') }}" method="post" enctype="multipart/form-data">
+
+            <div class="hds-text-input">
+                <label for="file" class="hds-text-input__label">Lataa anonymisoitava txt-tiedosto:</label>
+                <div class="hds-text-input__input-wrapper">
+                    <input type="file" id="file" name="file" accept=".txt">
+                </div>
+            </div>
+
+            <div class="hds-text-input">
+                <label for="encoding" class="hds-text-input__label">Tiedoston merkistö:</label>
+                <div class="hds-text-input__input-wrapper">
+                    <input type="text" id="encoding" name="encoding" value="utf-8">
+                </div>
+            </div>
+
+            <div class="hds-text-input">
+                <label for="user_languages" class="hds-text-input__label">Valitse aineiston kieli *:</label>
+                <div class="hds-text-input__input-wrapper">
+                    <select id="user_languages" name="user_languages" multiple>
+                        {% for lang in languages %}
+                        {% if lang == 'fi' %}
+                        <option value="{{ lang }}" selected>{{ lang }}</option>
+                        {% else %}
+                        <option value="{{ lang }}">{{ lang }}</option>
+                        {% endif %}
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="hds-text-input">
+                <label for="recognizers1" class="hds-text-input__label">Valitse käytettävät tunnistimet:</label>
+                <div class="hds-text-input__input-wrapper">
+                    <select id="recognizers1" name="recognizers" multiple>
+                        {% for recognizer in recognizer_options %}
+                        <option value="{{ recognizer }}">{{ recognizer }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <span class="hds-text-input__helper-text">Oletuksena kaikki tunnistimet ovat valittu.</span>
+            </div>
+
+             <button type="submit" class="hds-button hds-button--primary">
+                Anonymisoi tiedosto
+            </button>
+        </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
