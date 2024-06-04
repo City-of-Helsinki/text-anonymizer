@@ -1,6 +1,6 @@
-# presidio-text-anonymizer
+# Text-anonymizer
 
-This is an anonymization tool for Finnish text. The tool enables automatic detection of personal identifiers such as names, phone numbers and social security numbers in finnish context. Tool masks detected entities with descriptive labels, eg. "050-12341234" will be replaced with \<PUHELIN\>.
+This is an anonymization tool for Finnish text. The tool enables automatic detection of personal identifiers such as names, phone numbers and social security numbers in Finnish context. Tool masks detected entities with descriptive labels, eg. "050-1231234" will be replaced with \<PUHELIN\>.
 
 This tool can be used via command line interface, rest api and web application. It can handle plain text and csv formats. 
 
