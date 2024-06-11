@@ -185,7 +185,7 @@ def evaluate_nlp(nlp=None):
     # Convert the dictionary to a list of lists
     eval_results_table_data = [[key] + list(values.values()) for key, values in eval_results_data.items()]
     # Define the headers
-    headers = ['Entity', 'f1-score', 'precision', 'recall', 'samples']
+    headers = ['Entity', 'precision', 'recall', 'f1-score', 'samples']
 
     # Create the markdown table for evaluation results
     eval_results_markdown_table = tabulate(eval_results_table_data, headers, tablefmt="pipe")
