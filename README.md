@@ -247,7 +247,7 @@ Date: 23.4.2024
 
 Evaluation results: 
 
-| Entity   |   f1-score |   precision |   recall |   samples |
+| Entity   |  precision |    recall   | f1-score |   samples |
 |:---------|-----------:|------------:|---------:|----------:|
 | PERSON   |   0.555556 |    0.731707 | 0.631579 |        41 |
 | DATE     |   0.295455 |    0.866667 | 0.440678 |        15 |
