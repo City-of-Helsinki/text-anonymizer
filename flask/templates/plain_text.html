@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Vapaan tekstin anonymisointi{% endblock %}
+{% block title %}Vapaan tekstin käsittely{% endblock %}
 
 {% block content %}
 <div class="content">
@@ -9,15 +9,15 @@
 
         <div class="content__main">
             <!-- Text Anonymization Form -->
-            <h2>Tekstin anonymisointi</h2>
+            <h2>Tekstin käsittely</h2>
             <form action="{{ url_for('plain_text') }}" method="post">
 
                 <div class="hds-text-input">
-                    <label for="text" class="hds-text-input__label">Anonymisoitava teksti<span
+                    <label for="text" class="hds-text-input__label">Käsiteltävä teksti<span
                             class="hds-text-input__required">*</span></label>
                     <div class="hds-text-input__input-wrapper">
                         <textarea id="text" name="text" rows="10" cols="50" class="hds-text-input__input"
-                                  placeholder="Liitä anonymisoitava teksti tähän" required>{{text}}</textarea>
+                                  placeholder="Liitä käsiteltävä teksti tähän" required>{{text}}</textarea>
                     </div>
 
                 </div>
@@ -52,18 +52,18 @@
 
                 <br>
                 <button type="submit" class="hds-button hds-button--primary">
-                    Anonymisoi teksti
+                    Käsittele teksti
                 </button>
 
             </form>
 
             <!-- Anonymized Text Display -->
             {% if anonymized_text %}
-            <h3>Anonymisoitu teksti</h3>
+            <h3>Käsitelty teksti</h3>
             <div class="hds-text-input">
                 <div class="hds-text-input__input-wrapper">
                 <textarea id="anonymized_text" name="text" rows="auto" cols="50" class="hds-text-input__input"
-                          placeholder="Anonymisoitu teksti" required>{{ anonymized_text }}</textarea>
+                          placeholder="Käsitelty teksti" required>{{ anonymized_text }}</textarea>
                 </div>
             </div>
             {% endif %}

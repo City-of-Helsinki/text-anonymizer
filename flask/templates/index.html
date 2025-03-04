@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Tekstianonymisaattori etusivu{% endblock %}
+{% block title %}Henkilötunnisteiden poistajan etusivu{% endblock %}
 
 {% block content %}
 
@@ -12,9 +12,9 @@
                 <div class="hds-hero__content">
                     <div class="hds-hero--with-background__content-columns">
                         <div class="hds-hero__card">
-                            <h1 class="hds-hero__title">Tekstianonymisaattori</h1>
+                            <h1 class="hds-hero__title">Henkilötunnisteiden poistaja</h1>
                             <p class="hds-hero__text">
-                                Työkalu vapaan tekstin ja csv-tiedostojen anonymisointiin.
+                                Työkalu vapaan tekstin ja csv-tiedostojen käsittelyyn.
                             </p>
 <!--                            <a class="hds-button hds-button&#45;&#45;secondary hds-button&#45;&#45;theme-black black-button  button"-->
 <!--                               href="#anonymize-csv"><span class="hds-button__label">Aloita</span></a>-->
@@ -55,14 +55,13 @@
     <div class="hds-container content__container">
 
         <div class="content__main">
-            <h2>Tekstianonymisaattori</h2>
-            <p>Tämä on anonymisointityökalu suomenkieliselle tekstille. Työkalu mahdollistaa automaattisen
-                henkilötunnistimien, kuten nimien, puhelinnumeroiden ja sosiaaliturvatunnusten tunnistamisen
-                suomalaisessa kontekstissa. Työkalu peittää havaitut entiteetit kuvaavilla tunnisteilla, esim.
-                "050-12341234" korvataan tunnisteella PHONENUMBER.
+            <h2>Tietoa palvelusta</h2>
+            <p>Tämä on työkalu henkilötunnisteiden poistoon suomenkielisestä tekstistä. Työkalu mahdollistaa automaattisen henkilötunnistimien, kuten nimien, puhelinnumeroiden ja sosiaaliturvatunnusten tunnistamisen suomalaisessa kontekstissa. Työkalu peittää havaitut tunnisteet kuvaavilla merkinnöillä, esim. "050-12341234" korvataan sanalla PHONENUMBER.</p>
+            <p>Tunnisteiden etsintä ei kuitenkaan ole aukotonta, vaan osa käsitellyn tekstin tunnisteista voi jäädä havaitsematta. Lisäksi jotkin ei-tunnisteet voidaan virheellisesti peittää tunnisteina. Tunnisteiden poistaminen pienentää riskiä tunnistaa henkilö tekstin perusteella, mutta ei takaa, että tunnistaminen olisi mahdotonta. Siksi tietosuoja täytyy aina huomioida datan jatkokäsittelyssä ja säilyttämisessä. Palautedatan osalta tarkemmat ohjeet löytyvät <a href="https://forms.office.com/pages/responsepage.aspx?id=wWvrPyLXJkeWbFtYtk33UkHBYhn8EkhHgaLvB5_vJY5UQVQwMDlJSjVCMVhIREtDQlZTQ1BVRURaVy4u&route=shorturl" target="_blank">palauteaineiston pyyntölomakkeelta</a>.
             </p>
             <p>
-                Tämä web-työkalu pystyy vapaata tekstiä ja CSV-muodossa olevia tiedostoja. Sovellus ei tallenna eikä lokita mitään käsiteltyjä tietoja.
+                Tämä web-työkalu pystyy lukemaan vapaata tekstiä, tekstitiedostoja ja CSV-muodossa olevia tiedostoja. Sovellus ei tallenna eikä lokita mitään käsiteltyjä tietoja.
+Työkalu on tarkoitettu tietosuojariskin pienentämiseen tilanteessa, jossa hyödynnetään vapaita tekstejä. Käyttöönotossa on välttämätöntä tehdä tietosuojavaikutusten arviointi ja varmistua, että jäännösriski on hyväksyttävällä tasolla. Palvelusta on laadittu tietosuojan vaikutustenarviointi palautteiden käsittelyn kontekstissa.
             </p>
 
         </div>

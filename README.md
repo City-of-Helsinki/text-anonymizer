@@ -18,7 +18,9 @@ You can use this tool with docker, GitHub Codespaces or you can configure your o
     pip install -r requirements.txt
     # Build custom spacy model
     # Link local custon model library to environment libraries so presidio can load it
-    train_custom_spacy_model/train_custom_spacy_model.sh
+    cd train_custom_spacy_model
+    ./train_custom_spacy_model.sh
+    cd ..
     pip install -e custom_spacy_model
 
 

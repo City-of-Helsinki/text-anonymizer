@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Tekstitiedoston anonymisointi{% endblock %}
+{% block title %}Tekstitiedoston käsittely{% endblock %}
 
 {% block content %}
 <div class="content">
@@ -9,14 +9,14 @@
 
         <div class="content__main">
         <!-- CSV Anonymization Form -->
-        <h2 id="anonymize-txt">Tekstitiedoston anonymisointi</h2>
+        <h2 id="anonymize-txt">Tekstitiedoston käsittely</h2>
         {% if error %}
         <p style="color: red;">Virhe: {{ error }}</p>
         {% endif %}
         <form action="{{ url_for('text_file') }}" method="post" enctype="multipart/form-data">
 
             <div class="hds-text-input">
-                <label for="file" class="hds-text-input__label">Lataa anonymisoitava txt-tiedosto:</label>
+                <label for="file" class="hds-text-input__label">Lataa käsiteltävä txt-tiedosto:</label>
                 <div class="hds-text-input__input-wrapper">
                     <input type="file" id="file" name="file" accept=".txt">
                 </div>
@@ -57,7 +57,7 @@
             </div>
 
              <button type="submit" class="hds-button hds-button--primary">
-                Anonymisoi tiedosto
+                Käsittele tiedosto
             </button>
         </form>
         </div>

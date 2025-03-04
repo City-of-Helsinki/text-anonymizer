@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}CSV-tiedoston anonymisointi{% endblock %}
+{% block title %}CSV-tiedoston käsittely{% endblock %}
 
 {% block content %}
 <div class="content">
@@ -9,7 +9,7 @@
 
         <div class="content__main">
         <!-- CSV Anonymization Form -->
-        <h2 id="anonymize-csv">CSV-tiedoston anonymisointi</h2>
+        <h2 id="anonymize-csv">CSV-tiedoston käsittely</h2>
         {% if error %}
         <p style="color: red;">Virhe: {{ error }}</p>
         {% endif %}
@@ -18,7 +18,7 @@
             {% if phase == 'upload' %}
 
                 <div class="hds-text-input">
-                    <label for="file" class="hds-text-input__label">Lataa anonymisoitava CSV-tiedosto:</label>
+                    <label for="file" class="hds-text-input__label">Lataa käsiteltävä CSV-tiedosto:</label>
                     <div class="hds-text-input__input-wrapper">
                         <input type="file" id="file" name="file" accept=".csv">
                     </div>
@@ -65,7 +65,7 @@
                 </div>
 
                 <div class="hds-text-input">
-                    <label for="columns" class="hds-text-input__label">Valitse anonymisoitavat sarakkeet *:</label>
+                    <label for="columns" class="hds-text-input__label">Valitse käsiteltävät sarakkeet *:</label>
                     <div class="hds-text-input__input-wrapper">
                         <select id="columns" name="columns" multiple>
                             {% for column in columns %}
@@ -88,7 +88,7 @@
                 </div>
 
                 <button type="submit" class="hds-button hds-button--primary">
-                    Anonymisoi CSV
+                    Käsittele CSV
                 </button>
 
             {% endif %}
