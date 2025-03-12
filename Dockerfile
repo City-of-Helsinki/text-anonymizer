@@ -34,6 +34,8 @@ RUN pip3 install -r /app/requirements.in
 # Install server dependencies
 RUN pip3 install -r /app/requirements-server.txt
 
+# Trigger tldextract public suffix list download in build phase
+RUN python3 -c "import tldextract; tldextract.extract('example.com')"
 
 # Train custom spacy model and install it
 COPY /test/data/ /app/test/data/

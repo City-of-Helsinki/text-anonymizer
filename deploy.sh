@@ -40,7 +40,7 @@ deploy() {
   echo "1. Login to prem: ssh $username@prem"
   echo "2. Run: docker stop anonymizer"
   echo "3. Run: docker rm anonymizer"
-  echo "4. Run: docker run -d --restart unless-stopped --network net -e MODE=webapi --name anonymizer $image"
+  echo "4. Run: docker run -d --restart unless-stopped --network net -e MODE=web --name anonymizer $image"
   echo "5. Run: docker ps"
   echo "6. Check that the container is running: docker logs anonymizer"
 }
