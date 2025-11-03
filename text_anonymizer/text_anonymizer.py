@@ -4,7 +4,7 @@ from typing import List
 from presidio_analyzer import RecognizerRegistry, AnalyzerEngine, RecognizerResult
 from presidio_analyzer.nlp_engine import NlpEngineProvider
 from presidio_analyzer.predefined_recognizers import EmailRecognizer, PhoneRecognizer, SpacyRecognizer, IpRecognizer, \
-    IbanRecognizer
+    IbanRecognizer, GLiNERRecognizer
 from presidio_anonymizer import AnonymizerEngine, ConflictResolutionStrategy
 
 from text_anonymizer import default_settings
@@ -42,7 +42,7 @@ class TextAnonymizer:
                  languages=['fi', 'en'],
                  settings: AnonymizerSettings = None,
                  recognizer_configuration: List[str] = None,
-                 debug_mode=False):
+                 debug_mode=False, entity_mapping=None):
         """
         Anonymizer initialization.
         :param operator_config: Option to control how entities are labeled in anonymization
@@ -93,7 +93,7 @@ class TextAnonymizer:
         self.languages = languages_cleaned
 
         # Setup selected recognizers
-        self.registry = RecognizerRegistry()
+        self.registry = RecognizerRegistry(supported_languages=self.languages)
 
         if RECOGNIZER_EMAIL in self.recognizer_configuration:
             email_recognizer_en = EmailRecognizer(supported_language='fi')
@@ -180,9 +180,48 @@ class TextAnonymizer:
             address_spacy_recognizer = SpacyAddressRecognizer(anonymize_full_string=False, supported_entity='ADDRESS')
             self.registry.add_recognizer(address_spacy_recognizer)
 
+        if RECOGNIZER_GLINER_FI in self.recognizer_configuration:
+            entity_mapping = {
+                "person": "PERSON",
+                "name": "PERSON",
+                "organization": "ORGANIZATION",
+                "location": "LOCATION",
+                "street_address": "ADDRESS",
+            }
+
+            gliner_recognizer = GLiNERRecognizer(
+                model_name="urchade/gliner_multi_pii-v1",
+                entity_mapping=entity_mapping,
+                flat_ner=False,
+                multi_label=True,
+                map_location="cpu",
+                supported_language="fi"
+            )
+            self.registry.add_recognizer(gliner_recognizer)
+
+        if RECOGNIZER_GLINER_EN in self.recognizer_configuration:
+            entity_mapping = {
+                "person": "PERSON",
+                "name": "PERSON",
+                "organization": "ORGANIZATION",
+                "location": "LOCATION",
+                "street_address": "ADDRESS",
+            }
+
+            gliner_recognizer = GLiNERRecognizer(
+                model_name="urchade/gliner_multi_pii-v1",
+                entity_mapping=entity_mapping,
+                flat_ner=False,
+                multi_label=True,
+                map_location="cpu",
+                supported_language="en"
+            )
+            self.registry.add_recognizer(gliner_recognizer)
+
         # Init engines
         provider = NlpEngineProvider(conf_file=self.CONFIG_FILE)
         self.nlp_engine = provider.create_engine()
+
         self.anonymizer_engine = AnonymizerEngine()
         self.analyzer_engine = AnalyzerEngine(
             log_decision_process=self.log_decision_process,

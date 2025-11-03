@@ -2,7 +2,7 @@ nlp_engine_name: spacy
 models:
     -   lang_code: en
         model_name: en_core_web_sm
-#    -   lang_code: fi
-#        model_name: fi_core_news_lg
     -   lang_code: fi
-        model_name: custom_spacy_model
+        model_name: fi_core_news_lg
+#    -   lang_code: fi
+#        model_name: custom_spacy_model

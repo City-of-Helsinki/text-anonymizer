@@ -18,7 +18,8 @@ class BaseRecognizerTest():
         self.test_cases = test_cases
         self.bad_test_cases = bad_test_cases
         # Init analyzer engine
-        registry = RecognizerRegistry()
+        languages = ["fi"]
+        registry = RecognizerRegistry(supported_languages=languages)
         registry.add_recognizer(recognizer)
         config_file = "../text_anonymizer/config/languages-config.yml"
         provider = NlpEngineProvider(conf_file=config_file)
@@ -26,7 +27,7 @@ class BaseRecognizerTest():
 
         self.analyzer = AnalyzerEngine(
             registry=registry,
-            supported_languages=["fi"],
+            supported_languages=languages,
             nlp_engine=nlp_engine)
 
 

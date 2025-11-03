@@ -36,7 +36,7 @@ DEFAULT_SETTINGS.mask_mappings_debug = {
     'IBAN_CODE': 'TILINUMERO',
     'OTHER': 'TUNNISTE',
     'REAL_PROPERTY_ID': 'KIINTEISTÖTUNNUS',
-    'PERSON': 'SPACY_NIMI',
+    'PERSON': 'NER_NIMI',
 }
 
 DEFAULT_SETTINGS.operator_config = {
@@ -53,9 +53,10 @@ DEFAULT_SETTINGS.recognizer_configuration = [RECOGNIZER_EMAIL,
                                              RECOGNIZER_BLOCKLIST,
                                              RECOGNIZER_GRANTLIST,
                                              RECOGNIZER_PROPERTY,
-                                             RECOGNIZER_SPACY_FI,
-                                             RECOGNIZER_SPACY_EN,
-                                             RECOGNIZER_SPACY_ADDRESS
+                                             # RECOGNIZER_SPACY_FI,
+                                             # RECOGNIZER_SPACY_EN,
+                                             # RECOGNIZER_SPACY_ADDRESS
+                                             RECOGNIZER_GLINER_FI
                                              ]
 
 RECOGNIZER_CONFIGURATION_ALL = [RECOGNIZER_EMAIL,
@@ -71,7 +72,8 @@ RECOGNIZER_CONFIGURATION_ALL = [RECOGNIZER_EMAIL,
                                 RECOGNIZER_PROPERTY,
                                 RECOGNIZER_SPACY_FI,
                                 RECOGNIZER_SPACY_EN,
-                                RECOGNIZER_SPACY_ADDRESS
+                                RECOGNIZER_SPACY_ADDRESS,
+                                RECOGNIZER_GLINER_FI
                                 ]
 
 RECOGNIZER_CONFIGURATION_WEBAPP = [RECOGNIZER_EMAIL,
@@ -85,5 +87,6 @@ RECOGNIZER_CONFIGURATION_WEBAPP = [RECOGNIZER_EMAIL,
                                     RECOGNIZER_PROPERTY,
                                     RECOGNIZER_SPACY_FI,
                                     RECOGNIZER_SPACY_EN,
-                                    RECOGNIZER_SPACY_ADDRESS
+                                    RECOGNIZER_SPACY_ADDRESS,
+                                    RECOGNIZER_GLINER_FI
                                     ]
