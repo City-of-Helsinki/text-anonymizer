@@ -239,29 +239,34 @@ Run model evaluation script to evaluate custom spacy model.
 
 It will output evaluation results that are included in this README.
 
-### Evaluation results for model
+
+
+### Evaluation results for fine tuned model
 
 Evaluation dataset consists of 101 sample sentences.
 
 
-Date: 23.4.2024
+Date: 12.11.2025
 
 
 Evaluation results: 
 
-| Entity   |  precision |    recall   | f1-score |   samples |
-|:---------|-----------:|------------:|---------:|----------:|
-| PERSON   |   0.555556 |    0.731707 | 0.631579 |        41 |
-| DATE     |   0.295455 |    0.866667 | 0.440678 |        15 |
-| LOC      |   0.346154 |    0.580645 | 0.433735 |        31 |
-| CARDINAL |   0.125    |    1        | 0.222222 |         4 |
-| GPE      |   0.116667 |    1        | 0.208955 |         7 |
-| ORDINAL  |   0        |    0        | 0        |           |
-| ORG      |   0        |    0        | 0        |           |
-| O        |   0        |    0        | 0        |         3 |
-| NORP     |   0        |    0        | 0        |           |
-| FAC      |   0        |    0        | 0        |           |
-| QUANTITY |   0        |    0        | 0        |           |
+| Entity   |   precision |   recall |   f1-score |   samples |
+|:---------|------------:|---------:|-----------:|----------:|
+| PERSON   |    0.75     | 0.878049 |   0.808989 |        41 |
+| DATE     |    0.292683 | 0.8      |   0.428571 |        15 |
+| LOC      |    0.454545 | 0.645161 |   0.533333 |        31 |
+| CARDINAL |    0.142857 | 1        |   0.25     |         4 |
+| GPE      |    0.125    | 1        |   0.222222 |         7 |
+| ORDINAL  |    0        | 0        |   0        |           |
+| ORG      |    0        | 0        |   0        |           |
+| O        |    0        | 0        |   0        |         3 |
+| QUANTITY |    0        | 0        |   0        |           |
+| PRODUCT  |    0        | 0        |   0        |           |
+
+
+
+
 
 ### Evaluation results from test/evaluation_ensemble.py
 

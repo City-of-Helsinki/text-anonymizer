@@ -6,7 +6,7 @@ import time
 import test_data
 from text_anonymizer import TextAnonymizer
 from text_anonymizer.constants import RECOGNIZER_SPACY_ADDRESS
-from text_anonymizer.default_settings import RECOGNIZER_SPACY_FI, RECOGNIZER_GLINER_FI
+from text_anonymizer.default_settings import RECOGNIZER_SPACY_FI
 
 ACCEPTED_ERROR_RATE = 0.05   # 5% error rate
 
@@ -108,7 +108,7 @@ def generate_words(amount=1):
 def evaluate_anonymizer_with_generated_names(iterations=10000) -> (float, list[str]):
     print("\nRunning name anonymization test with {i} iterations using randomly generated names from top-{tl} "
           "last names and top-{tf} first names.".format(i=iterations, tl=TOP_LAST_NAMES, tf=TOP_FIRST_NAMES))
-    recognizers = [RECOGNIZER_GLINER_FI]
+    recognizers = [RECOGNIZER_SPACY_FI]
     text_anonymizer = TextAnonymizer(languages=['fi'], recognizer_configuration=recognizers)
     # Measure time
     start_time = time.time()

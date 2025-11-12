@@ -53,10 +53,9 @@ DEFAULT_SETTINGS.recognizer_configuration = [RECOGNIZER_EMAIL,
                                              RECOGNIZER_BLOCKLIST,
                                              RECOGNIZER_GRANTLIST,
                                              RECOGNIZER_PROPERTY,
-                                             # RECOGNIZER_SPACY_FI,
-                                             # RECOGNIZER_SPACY_EN,
-                                             # RECOGNIZER_SPACY_ADDRESS
-                                             RECOGNIZER_GLINER_FI
+                                             RECOGNIZER_SPACY_FI,
+                                             RECOGNIZER_SPACY_EN,
+                                             RECOGNIZER_SPACY_ADDRESS
                                              ]
 
 RECOGNIZER_CONFIGURATION_ALL = [RECOGNIZER_EMAIL,
@@ -73,7 +72,6 @@ RECOGNIZER_CONFIGURATION_ALL = [RECOGNIZER_EMAIL,
                                 RECOGNIZER_SPACY_FI,
                                 RECOGNIZER_SPACY_EN,
                                 RECOGNIZER_SPACY_ADDRESS,
-                                RECOGNIZER_GLINER_FI
                                 ]
 
 RECOGNIZER_CONFIGURATION_WEBAPP = [RECOGNIZER_EMAIL,
@@ -88,5 +86,4 @@ RECOGNIZER_CONFIGURATION_WEBAPP = [RECOGNIZER_EMAIL,
                                     RECOGNIZER_SPACY_FI,
                                     RECOGNIZER_SPACY_EN,
                                     RECOGNIZER_SPACY_ADDRESS,
-                                    RECOGNIZER_GLINER_FI
                                     ]

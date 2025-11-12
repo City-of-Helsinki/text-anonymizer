@@ -2,7 +2,6 @@ fuzzywuzzy
 Levenshtein
 python-Levenshtein
 numpy
-presidio-analyzer[gliner]
 presidio-anonymizer
 requests
 spacy==3.8.0

@@ -4,7 +4,7 @@ from typing import List
 from presidio_analyzer import RecognizerRegistry, AnalyzerEngine, RecognizerResult
 from presidio_analyzer.nlp_engine import NlpEngineProvider
 from presidio_analyzer.predefined_recognizers import EmailRecognizer, PhoneRecognizer, SpacyRecognizer, IpRecognizer, \
-    IbanRecognizer, GLiNERRecognizer
+    IbanRecognizer
 from presidio_anonymizer import AnonymizerEngine, ConflictResolutionStrategy
 
 from text_anonymizer import default_settings
@@ -179,44 +179,6 @@ class TextAnonymizer:
             # Finnish spacy recognizer
             address_spacy_recognizer = SpacyAddressRecognizer(anonymize_full_string=False, supported_entity='ADDRESS')
             self.registry.add_recognizer(address_spacy_recognizer)
-
-        if RECOGNIZER_GLINER_FI in self.recognizer_configuration:
-            entity_mapping = {
-                "person": "PERSON",
-                "name": "PERSON",
-                "organization": "ORGANIZATION",
-                "location": "LOCATION",
-                "street_address": "ADDRESS",
-            }
-
-            gliner_recognizer = GLiNERRecognizer(
-                model_name="urchade/gliner_multi_pii-v1",
-                entity_mapping=entity_mapping,
-                flat_ner=False,
-                multi_label=True,
-                map_location="cpu",
-                supported_language="fi"
-            )
-            self.registry.add_recognizer(gliner_recognizer)
-
-        if RECOGNIZER_GLINER_EN in self.recognizer_configuration:
-            entity_mapping = {
-                "person": "PERSON",
-                "name": "PERSON",
-                "organization": "ORGANIZATION",
-                "location": "LOCATION",
-                "street_address": "ADDRESS",
-            }
-
-            gliner_recognizer = GLiNERRecognizer(
-                model_name="urchade/gliner_multi_pii-v1",
-                entity_mapping=entity_mapping,
-                flat_ner=False,
-                multi_label=True,
-                map_location="cpu",
-                supported_language="en"
-            )
-            self.registry.add_recognizer(gliner_recognizer)
 
         # Init engines
         provider = NlpEngineProvider(conf_file=self.CONFIG_FILE)

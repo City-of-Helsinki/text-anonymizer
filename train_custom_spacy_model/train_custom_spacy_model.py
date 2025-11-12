@@ -13,8 +13,8 @@ from evaluation import evaluate_nlp
 print("Starting fine tuning of spacy model for Finnish names, helsinki streets and areas")
 
 AREAS_TEST_DATA_SIZE = 175
-STREETS_TEST_DATA_SIZE = 975
-NAMES_TEST_DATA_SIZE = 675
+STREETS_TEST_DATA_SIZE = 500
+NAMES_TEST_DATA_SIZE = 500
 
 
 exec_ner = True
@@ -31,7 +31,7 @@ NAME_ENTITY = 'PERSON'
 
 base_model = "fi_core_news_lg"
 nlp = spacy.load(base_model)
-target_path = "../custom_spacy_model/fi_datahel_spacy-0.0.2"
+target_path = "../custom_spacy_model/fi_datahel_spacy-0.0.3"
 
 this_dir, this_filename = os.path.split(__file__)
 
@@ -100,7 +100,25 @@ with open(_PRODUCTS_DATA_FILE, 'r') as data:
         _PRODUCTS.append(line[0] if random.randint(1, 3) == 1 else line[0].lower())
 
 
+def augment_sentence(sentence, entity_text, entity_type):
+    """Create variations of training sentences to improve robustness"""
+    variations = []
+
+    # Add punctuation variations
+    if not sentence.endswith(('.', '!', '?')):
+        variations.append((sentence + '.', entity_text))
+        variations.append((sentence + '!', entity_text))
+
+    # Add case variations for names (sometimes people write in different cases)
+    if entity_type == NAME_ENTITY and len(variations) < 2:
+        # Already at limit, just return what we have
+        pass
+
+    return variations[:2]  # Limit to avoid too much data
+
+
 def generate_sentence(person, list):
+    sent = ""
     try:
         sent = random.choice(list)
         if '{s}' in sent:
@@ -726,6 +744,7 @@ SENTENCES_AREAS = [
 ]
 
 EVALUATION_SENTENCES = [
+    # Name evaluation sentences - 25
     'Haluaisin kiittää {s} hänen nopeasta toiminnastaan, kun hän huolehti kaatuneen puun poistamisesta tieltämme, mikä paransi merkittävästi alueemme turvallisuutta. ',
     '{s} ansaitsee kiitokset siitä, kuinka hienosti hän on pitänyt huolta puistojemme kunnossapidosta, mikä tekee niistä viihtyisiä ja kauniita paikkoja kaikille. ',
     'Kiitän {s} hänen tehokkaasta tavastaan käsitellä melusaasteeseen liittyviä valituksia, mikä on parantanut monien asukkaiden elämänlaatua. ',
@@ -736,6 +755,22 @@ EVALUATION_SENTENCES = [
     '{s} on ollut suureksi avuksi ja antanut arvokkaita neuvoja katujuhlan järjestämisessä, mikä on mahdollistanut onnistuneen ja ikimuistoisen tapahtuman. ',
     '{s} on tehnyt kiitettävää työtä kaupungin roskaongelman ratkaisemisessa, ja hänen toimensa ovat tehneet ympäristöstämme puhtaamman ja viihtyisämmän. ',
     'Olen myös kiitollinen {s}, joka on omistautunut vihreämpien vaihtoehtojen edistämiselle julkisessa liikenteessä, mikä on parantanut kaupunkimme ilmanlaatua ja edistänyt kestävää kehitystä.',
+    'Asiakaspalvelija {s} auttoi minua ystävällisesti ja ammattitaitoisesti löytämään oikean lomakkeen.',
+    'Terveisin, {s}, Helsinki',
+    'Yhteydenottohenkilö: {s}, puhelin 050-1234567',
+    'Vastaanottaja {s} sai kirjeen eilen aamulla.',
+    'Lähettäjä: {s}, Sähköposti: esimerkki@hel.fi',
+    'Olen erittäin tyytyväinen siihen, että {s} hoiti asiamme nopeasti.',
+    'Kiitos {s} avusta tämän ongelman ratkaisemisessa!',
+    'Toivon, että {s} voi auttaa meitä tässä asiassa.',
+    'Projektipäällikkö {s} järjesti kokouksen ensi viikolle.',
+    'Asiakkaana {s} on aina ollut erittäin tyytyväinen palveluumme.',
+    'Haluan kiittää {s} hänen panoksestaan projektiin.',
+    'Yhteyshenkilömme {s} vastaa kaikkiin kysymyksiin.',
+    'Edustaja {s} osallistuu huomenna neuvotteluihin.',
+    'Vastaava {s} hoitaa kaikki käytännön järjestelyt.',
+    'Suunnittelijana {s} teki loistavaa työtä.',
+    # Street evaluation sentences - 25
     'Kiitokset kaupungin työntekijöille, jotka huolehtivat Esplanadin puiston kauniista kukkaistutuksista, ne piristävät päivittäistä kävelyäni {s}. ',
     'On hienoa nähdä, että {s} joulukadun valot saavat aina niin paljon iloa ja lämpöä pimeään talviaikaan. ',
     'Kaupunki on tehnyt upeaa työtä luomalla kävely- ja pyöräteitä {s}, mikä on rohkaissut ihmisiä liikkumaan enemmän. ',
@@ -746,19 +781,77 @@ EVALUATION_SENTENCES = [
     'Kaupungin nopea toiminta vandaalismin korjaamisessa {s} leikkipaikalla on osoitus siitä, että he välittävät yhteisön viihtyisyydestä. ',
     'Kiitos, että {s} katutyöt saatiin valmiiksi etuajassa, mikä on vähentänyt huomattavasti alueella asuvien arjen haittoja. ',
     'Kruununhaan uudet liikennemerkit ja suojatie {s} ovat tehneet jalankulkijoiden liikkumisesta turvallisempaa ja sujuvampaa.',
+    'Osoitteessa {s} 15 on upea vanha puu, joka tarjoaa varjoa kesäisin.',
+    'Kadulla {s} järjestetään joka kesä kiva katujuhla.',
+    'Pyöräily {s} on nyt paljon turvallisempaa uusien pyöräteiden ansiosta.',
+    'Lumikasa {s} estää näkyvyyden risteyksessä.',
+    'Terveisin, Matti Meikäläinen, {s} 10 A 5, Helsinki',
+    'Vastaanottaja: Liisa Virtanen, {s} 22, 00100 Helsinki',
+    'Kadun {s} valaistus kaipaa korjausta.',
+    'Risteyksessä {s} on vaarallinen liikennetilanne.',
+    'Asunto sijaitsee osoitteessa {s} 7 B 12.',
+    'Toivon aurausta kadulle {s}.',
+    'Kadulla {s} on suuri kuoppa, joka pitäisi paikata.',
+    'Bussipysäkki {s} tarvitsee katoksen.',
+    'Jalkakäytävä {s} on liukas talvella.',
+    'Pyörätelineet {s} ovat aina täynnä.',
+    'Leikkipuisto {s} on lasten suosikki.',
+    # Area evaluation sentences - 25
     '{s} kirjaston uudet tilat ovat ihastuttava lisä alueen kulttuuritarjontaan, ja niiden monipuoliset tapahtumat ja työpajat ovat saaneet suuren suosion asukkaiden keskuudessa. ',
     '{s} ranta-alueiden siisteyteen ja ylläpitoon panostaminen on tuonut alueelle lisää ulkoilijoita ja parantanut kaikkien viihtyvyyttä. ',
     'Minusta {s} ympäristössä toteutetut viheralueiden kunnostustyöt ovat elävöittäneet koko aluetta ja houkutelleet paikalle niin lintubongareita kuin sunnuntaikävelijöitäkin. ',
     'Tänä kesänä avatut {s} uudet pyörätiet ovat tehneet saaresta entistä houkuttelevamman kohteen pyöräilijöille ja korostaneet alueen luonnonkauneutta. ',
-    'Uskon enttä kaikki {s} asukkaat ovat olleet erityisen tyytyväisiä alueen katujen uudistuksiin, jotka ovat parantaneet liikenneturvallisuutta ja lisänneet viihtyisyyttä kävelyreiteillä.',
+    'Uskon että kaikki {s} asukkaat ovat olleet erityisen tyytyväisiä alueen katujen uudistuksiin, jotka ovat parantaneet liikenneturvallisuutta ja lisänneet viihtyisyyttä kävelyreiteillä.',
+    'Alue {s} on yksi Helsingin viihtyisimmistä kaupunginosista.',
+    '{s} uimahalli on suosittu paikka erityisesti lapsiperheille.',
+    'Asun {s} alueella ja nautin sen rauhallisesta ilmapiiristä.',
+    'Kaupunginosa {s} kehittyy jatkuvasti parempaan suuntaan.',
+    '{s} koulu on saanut mainetta hyvästä opetuksesta.',
+    'Lähikauppa {s} tarjoaa monipuolisen valikoiman.',
+    'Puisto {s} on täydellinen paikka piknikille.',
+    'Liikenneyhteydet {s} ovat erinomaiset.',
+    'Asunnot {s} ovat kysyttyjä.',
+    '{s} terveyskeskus palvelee asukkaita hyvin.',
+    'Harrastusmahdollisuudet {s} ovat monipuoliset.',
+    'Kerhotalo {s} järjestää paljon tapahtumia.',
+    '{s} kirjasto on hyvin varustettu.',
+    'Leikkipaikat {s} ovat turvallisia.',
+    'Yhteisöllisyys {s} on vahvaa.',
+    '{s} ravintoloissa on hyvä tunnelma.',
+    'Liikuntapuisto {s} tarjoaa paljon aktiviteetteja.',
+    '{s} markkinat houkuttelevat paljon väkeä.',
+    'Asukasyhdistys {s} on aktiivinen.',
+    '{s} on mainioinen paikka asua.',
+    # Negative examples - 25 (sentences that should NOT have entities)
     'Kaupungin järjestämät ilmaiset konsertit puistossa ovat tuoneet yhteen eri-ikäisiä ihmisiä ja lisänneet yhteisön yhteenkuuluvuuden tunnetta.',
     'On hienoa, että kirjastot tarjoavat nyt entistä enemmän työtiloja etätyötä tekeville, mikä on edistänyt monimuotoisen työkulttuurin kehittymistä.',
     'Kiitokset kaupungille nopeasta toiminnasta poistettaessa graffiteja julkisilta seiniltä, se on pitänyt ympäristömme siistinä ja viihtyisänä.',
     'Puistojen leikkipaikkojen säännöllinen huolto ja turvallisuuden tarkastukset ovat olleet todella tärkeitä lasten turvallisuuden kannalta.',
-    'Kaupungin viimeaikainen panostus pyöräteiden kunnossapitoon on tehnyt pyöräilystä miellyttävämmän ja turvallisemman vaihtoehdon kaupunkiliikenteessä.'
+    'Kaupungin viimeaikainen panostus pyöräteiden kunnossapitoon on tehnyt pyöräilystä miellyttävämmän ja turvallisemman vaihtoehdon kaupunkiliikenteessä.',
+    'Kesällä on aina niin lämmintä ja aurinkoista, että kaikki haluavat viettää aikaa ulkona.',
+    'Talvella sataa lunta ja kadut täytyy aurata säännöllisesti.',
+    'Syksy on kaunis vuodenaika värikkäine lehtiensä.',
+    'Kevät tuo mukanaan uutta elämää ja toivoa.',
+    'Joulukuussa vietetään joulua perheen kanssa.',
+    'Helmikuussa on usein kylmintä.',
+    'Elokuussa monet ovat lomalla.',
+    'Syyskuussa koulut alkavat taas.',
+    'Lokakuussa lehdet putoavat puista.',
+    'Marraskuu on usein harmaa ja sateinen.',
+    'Toukokuussa luonto herää henkiin.',
+    'Huhtikuussa sää voi vaihdella paljon.',
+    'Kesäkuussa on vuoden pisimmät päivät.',
+    'Tammikuussa on uudenvuoden juhla.',
+    'Maaliskuussa alkaa kevät hiljalleen.',
+    'Heinäkuussa on helteitä.',
+    'Perjantaina on aina hyvä mieli.',
+    'Maanantaina alkaa työviikko.',
+    'Viikonloppuna voi rentoutua.',
+    'Keskiviikkona on usein puoliväli viikosta.',
 ]
 
 EVALUATION_VALUES = [
+    # Names - 25 examples for better coverage
     'Martti',
     'SEPPO TOIVONEN',
     'Kalle',
@@ -769,6 +862,22 @@ EVALUATION_VALUES = [
     'Anna Lehtinen',
     'Sanna Holmström',
     'Sofia Virtaselle',
+    'Pekka Virtanen',
+    'Maria Korhonen',
+    'Juhani Nieminen',
+    'Leena Järvinen',
+    'Mikko Hämäläinen',
+    'Tuula Koskinen',
+    'Antti Laine',
+    'Kaarina Mäkinen',
+    'Juha Heikkinen',
+    'Helena Tuominen',
+    'Timo Rantanen',
+    'Riitta Salo',
+    'Erkki Laitinen',
+    'Liisa Kinnunen',
+    'Markku Lehto',
+    # Streets - 25 examples
     'Mannerheimintiellä',
     'Aleksanterinkadun',
     'Pitkänsillanrantaan',
@@ -779,11 +888,68 @@ EVALUATION_VALUES = [
     'Unioninkadun',
     'Kapteeninkadun',
     'Pohjoisesplanadilla',
+    'Hämeentien',
+    'Mechelininkadun',
+    'Sibeliuksenkadun',
+    'Mannerheimintie',
+    'Fredrikinkatu',
+    'Lapinlahdenkatu',
+    'Runeberginkatu',
+    'Töölönkatu',
+    'Sturenkatu',
+    'Hämeentie',
+    'Kasarmikatu',
+    'Mikonkatu',
+    'Kaisaniemenkatu',
+    'Siltasaarenkatu',
+    'Fleminginkatu',
+    # Areas - 25 examples
     'Kallion',
     'Vuosaaren',
     'Töölönlahden',
-    'lauttasaaren'
+    'lauttasaaren',
     'punavuoren',
+    'Käpylän',
+    'Munkkiniemen',
+    'Oulunkylän',
+    'Itäkeskuksen',
+    'Malmin',
+    'Kontula',
+    'Mellunmäen',
+    'Pasilan',
+    'Herttoniemen',
+    'Arabianrannan',
+    'Jätkäsaaren',
+    'Kalasataman',
+    'Kumpulan',
+    'Maunulan',
+    'Pitäjänmäen',
+    'Roihuvuoren',
+    'Haagan',
+    'Vallilan',
+    'Sörnäisten',
+    'Kruununhaan',
+    # Negative examples - 25 to balance
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
     None,
     None,
     None,
@@ -792,6 +958,7 @@ EVALUATION_VALUES = [
 ]
 
 EVALUATION_LABELS = [
+    # Names - 25
     NAME_ENTITY,
     NAME_ENTITY,
     NAME_ENTITY,
@@ -802,6 +969,22 @@ EVALUATION_LABELS = [
     NAME_ENTITY,
     NAME_ENTITY,
     NAME_ENTITY,
+    NAME_ENTITY,
+    NAME_ENTITY,
+    NAME_ENTITY,
+    NAME_ENTITY,
+    NAME_ENTITY,
+    NAME_ENTITY,
+    NAME_ENTITY,
+    NAME_ENTITY,
+    NAME_ENTITY,
+    NAME_ENTITY,
+    NAME_ENTITY,
+    NAME_ENTITY,
+    NAME_ENTITY,
+    NAME_ENTITY,
+    NAME_ENTITY,
+    # Streets - 25
     STREET_ENTITY,
     STREET_ENTITY,
     STREET_ENTITY,
@@ -812,11 +995,68 @@ EVALUATION_LABELS = [
     STREET_ENTITY,
     STREET_ENTITY,
     STREET_ENTITY,
+    STREET_ENTITY,
+    STREET_ENTITY,
+    STREET_ENTITY,
+    STREET_ENTITY,
+    STREET_ENTITY,
+    STREET_ENTITY,
+    STREET_ENTITY,
+    STREET_ENTITY,
+    STREET_ENTITY,
+    STREET_ENTITY,
+    STREET_ENTITY,
+    STREET_ENTITY,
+    STREET_ENTITY,
+    STREET_ENTITY,
+    STREET_ENTITY,
+    # Areas - 25
     AREA_ENTITY,
     AREA_ENTITY,
     AREA_ENTITY,
     AREA_ENTITY,
     AREA_ENTITY,
+    AREA_ENTITY,
+    AREA_ENTITY,
+    AREA_ENTITY,
+    AREA_ENTITY,
+    AREA_ENTITY,
+    AREA_ENTITY,
+    AREA_ENTITY,
+    AREA_ENTITY,
+    AREA_ENTITY,
+    AREA_ENTITY,
+    AREA_ENTITY,
+    AREA_ENTITY,
+    AREA_ENTITY,
+    AREA_ENTITY,
+    AREA_ENTITY,
+    AREA_ENTITY,
+    AREA_ENTITY,
+    AREA_ENTITY,
+    AREA_ENTITY,
+    AREA_ENTITY,
+    # Negative examples - 25
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
     None,
     None,
     None,
@@ -836,10 +1076,13 @@ for s in NAME_LIST:
     example: Example = Example.from_dict(doc, {"entities": entities})
     TRAIN_DATA.append(example)
 
-street_suffixes = ['llä', 'lle']
+street_suffixes = ['llä', 'lle', 'lta', 'ltä', 'lla', 'n', 'ksi', 'ssa', 'ssä', 'sta', 'stä']
 for s in STREET_LIST:
+    s_original = s
     s = s.lower()
-    if not ' ' in s and any(x in s for x in ['katu, tie, polku']):
+
+    # Choose sentence templates based on street name type
+    if not ' ' in s and any(x in s for x in ['katu', 'tie', 'polku']):
         # use full set only with traditional street names
         sentence, start, end = generate_sentence(s, SENTENCES_STREETS)
     else:
@@ -857,9 +1100,20 @@ for s in STREET_LIST:
         entities = [[start, end, STREET_ENTITY]]
 
     doc = nlp(sentence)
-
     example: Example = Example.from_dict(doc, {"text": sentence, "entities": entities})
     TRAIN_DATA.append(example)
+
+    # Add variations with Finnish case suffixes for compound street names without spaces
+    if not ' ' in s and len(TRAIN_DATA) < (len(NAME_LIST) + len(STREET_LIST) * 3 + len(AREA_LIST)):
+        # Add one suffix variation to increase training data diversity
+        suffix = random.choice(street_suffixes)
+        if not s.endswith(suffix):
+            s_var = s + suffix
+            sentence_var, start_var, end_var = generate_sentence(s_var, SENTENCES_STREETS[:5])
+            doc_var = nlp(sentence_var)
+            entities_var = [[start_var, end_var, STREET_ENTITY]]
+            example_var: Example = Example.from_dict(doc_var, {"text": sentence_var, "entities": entities_var})
+            TRAIN_DATA.append(example_var)
 
 for s in AREA_LIST:
     sentence, start, end = generate_sentence(s.lower(), SENTENCES_AREAS)
@@ -909,8 +1163,34 @@ FALSE_POSITIVES = [
     'Muutettuani helsinkiin, ajattelin että voisin asua muutaman vuoden.',
     'Helsinkiläisin asia on on olla helsingistä kotoisin.',
     'Helsinkiläiset koirat ovat nisäkkäitä.',
-    'Voisin vielä keksiä lauseen, jossa mainitaan helsingin sana, mutta en keksi enempää.'
+    'Voisin vielä keksiä lauseen, jossa mainitaan helsingin sana, mutta en keksi enempää.',
+    'Kesällä on lämmintä.',
+    'Talvi tulee pian.',
+    'Syksy on kaunis vuodenaika.',
+    'Aurinko paistaa kirkkaasti.',
+    'Jaspi, Valkea Kuulas ja Collina ovat omenalajikeita.',
+    'Etelä-Suomessa sataa vettä ja Pohjois-Suomessa on pakkasta.',
+    'Itä-Helsingin alueella asuu paljon ihmisiä, mutta Länsi-Helsingissä on enemmän puistoja.',
+    'Keskiviikkona kello 14.00 pidettiin kokous, jossa oli 15 osallistujaa.',
+    'Vuonna 2023 Helsinki täytti 470 vuotta.',
+    'Kesäkuussa järjestetään useita tapahtumia ympäri kaupunkia.',
+    'Talvella 2022-2023 lunta satoi ennätysmäärä.',
+    'Pääkaupunkiseudulla asuu noin 1,5 miljoonaa ihmistä.',
+    'Eilen illalla kello 20.15 nähtiin revontulia taivaalla.',
+    'Huomenna aamulla kello 8.00 alkaa kokous.',
+    'Viime viikolla tiistaina 14.2. järjestettiin talkoopäivä.',
+    'Kevättalvella päivät pitenevät nopeasti Suomessa.',
+    'Lokakuussa 2024 järjestetään suuret urheilukilpailut.',
+    'Perjantaina 17.3. vietetään Suomen kansallispäivää.',
+    'Lämpötila nousi eilen 25 asteeseen, mikä on harvinaista maaliskuussa.',
+    'Syyskuun lopulla alkaa syksy ja lehdet putoavat puista.',
+    'Toukokuussa kukat kukkivat ja linnut laulavat.',
+    'Joulukuussa vietetään joulua ja vuodenvaihde lähestyy.',
+    'Helmikuussa on talvilomaa kouluissa.',
+    'Elokuussa monet lomailevat ja nauttivat kesästä.',
+    'Marraskuu on usein harmaa ja sateinen kuukausi Suomessa.'
 ]
+
 
 for sentence in FALSE_POSITIVES:
     doc = nlp(sentence)
@@ -926,7 +1206,7 @@ for sentence in FALSE_POSITIVES:
     TRAIN_DATA.append(example)
 
 EVAL_DATA = []
-for i in range(0, len(EVALUATION_SENTENCES)-1):
+for i in range(0, len(EVALUATION_SENTENCES)):
     sentence = EVALUATION_SENTENCES[i]
     s = EVALUATION_VALUES[i]
     label = EVALUATION_LABELS[i]
@@ -937,7 +1217,7 @@ for i in range(0, len(EVALUATION_SENTENCES)-1):
         example: Example = Example.from_dict(doc, {"entities": entities})
     else:
         example: Example = Example.from_dict(nlp(sentence), {"entities": []})
-    TRAIN_DATA.append(example)
+    EVAL_DATA.append(example)
 
 # Heikki on kissa
 # {text: 'Heikki on kissa', entities=[[14, 17, 'ELÄIN']]}
@@ -959,14 +1239,14 @@ def train(training_iterations=1, score_threshold=0, verbose=False):
             recall = scores["ents_r"]
             f1_score = scores["ents_f"]
             if verbose:
-                print(f"Precision: {precision}")
-                print(f"Recall: {recall}")
-                print(f"F1 Score: {f1_score}")
+                print(f"Precision: {precision:.4f}")
+                print(f"Recall: {recall:.4f}")
+                print(f"F1 Score: {f1_score:.4f}")
         if "ents_per_type" in scores:
             per_type = scores["ents_per_type"]
             if verbose:
                 for entity_type, metrics in per_type.items():
-                    print(f"{entity_type}: Precision: {metrics['p']}, Recall: {metrics['r']}, F1: {metrics['f']}")
+                    print(f"{entity_type}: Precision: {metrics['p']:.4f}, Recall: {metrics['r']:.4f}, F1: {metrics['f']:.4f}")
         else:
             if verbose:
                 print("No entity types found", scores)
@@ -991,6 +1271,12 @@ def train(training_iterations=1, score_threshold=0, verbose=False):
         score = evaluate(nlp, EVAL_DATA)
         print(f"Scores before update: {score}")
 
+        # Early stopping parameters
+        best_f1 = 0
+        patience = 5
+        patience_counter = 0
+        metrics_history = {'loss': [], 'val_f1': [], 'val_precision': [], 'val_recall': []}
+
         other_pipes = [pipe for pipe in nlp.pipe_names if pipe != 'ner']
         with nlp.disable_pipes(*other_pipes):  # only train NER
             optimizer = nlp.resume_training()
@@ -999,16 +1285,42 @@ def train(training_iterations=1, score_threshold=0, verbose=False):
                 random.shuffle(TRAIN_DATA)
                 losses = {}
                 # Update the model with the new examples
-                c = 0
-                if verbose:
-                    print(f"{i} / {c}: {losses}")
-                batches = minibatch(TRAIN_DATA, size=compounding(16., 32., 1.001))
+                batches = minibatch(TRAIN_DATA, size=compounding(4.0, 32.0, 1.001))
                 for batch in batches:
-                    c += 1
                     nlp.update(batch, drop=0.5, losses=losses, sgd=optimizer)
+
+                # Evaluate on validation set
+                val_scores = evaluate(nlp, EVAL_DATA, verbose=False)
+                current_f1 = val_scores.get("ents_f") or 0.0
+                current_precision = val_scores.get("ents_p") or 0.0
+                current_recall = val_scores.get("ents_r") or 0.0
+
+                # Track metrics
+                metrics_history['loss'].append(losses.get('ner', 0.0))
+                metrics_history['val_f1'].append(current_f1)
+                metrics_history['val_precision'].append(current_precision)
+                metrics_history['val_recall'].append(current_recall)
+
+                if verbose or i % 5 == 0:
+                    print(f"Iteration {i+1}/{n_iter}: Loss={losses.get('ner', 0.0):.4f}, Eval F1={current_f1:.4f}, Eval Precision={current_precision:.4f}, Eval Recall={current_recall:.4f}")
+
+                # Early stopping check
+                if current_f1 > best_f1:
+                    best_f1 = current_f1
+                    patience_counter = 0
+                    if verbose:
+                        print(f"  → New best F1: {best_f1:.4f}")
+                else:
+                    patience_counter += 1
+                    if patience_counter >= patience:
+                        print(f"Early stopping at iteration {i+1} (no improvement for {patience} iterations)")
+                        break
 
         for p in other_pipes:
             nlp.enable_pipe(p)
+
+        print(f"\nBest validation F1 score: {best_f1:.4f}")
+        print(f"Final metrics - Precision: {metrics_history['val_precision'][-1]:.4f}, Recall: {metrics_history['val_recall'][-1]:.4f}")
     test_score = 0
     eval_results = evaluate_nlp(nlp)
 
@@ -1029,7 +1341,7 @@ def train(training_iterations=1, score_threshold=0, verbose=False):
 
 
 if __name__ == "__main__":
-    iterations = [1]
+    iterations = [30]  # Increased from 1 to 30 for better training with early stopping
     test_score = 0
     highest_score = 0
     results = []
