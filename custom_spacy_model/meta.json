@@ -1,7 +1,7 @@
 {
   "lang":"fi",
   "name":"datahel_spacy",
-  "version":"0.0.2",
+  "version":"0.0.3",
   "description":"Modified version of core_news_lg by explosion.ai for city anonymization purposes. Components: tok2vec, tagger, morphologizer, parser, lemmatizer (trainable_lemmatizer), senter, ner.",
   "author":"DataHel, City of Helsinki",
   "email":"",
