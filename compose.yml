@@ -5,7 +5,7 @@ services:
       context: .
       dockerfile: Dockerfile
     environment:
-      MODE: ${MODE:-dev}
+      MODE: ${MODE:-web}
     ports:
       - 127.0.0.1:8000:8000 # fastapi http rest or flask webapp
     volumes:

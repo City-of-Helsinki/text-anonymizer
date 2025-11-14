@@ -23,6 +23,8 @@ class EvaluateWith5000Names(unittest.TestCase):
 """
 Core: 
 Finished. Iterations: 5000,  error rate: 2.02%, anonymized: 92.72%, partially anonymized: 5.26%
+Finished. Iterations: 5000,  error rate: 0.1%, anonymized: 96.74%, partially anonymized: 3.16%
+
 
 Custom:
 Finished. Iterations: 5000,  error rate: 0.48%, anonymized: 98.24%, partially anonymized: 1.28%

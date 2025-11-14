@@ -1,6 +1,8 @@
 import spacy
 
-model = "../custom_spacy_model/fi_datahel_spacy-0.0.1"
+from train_custom_spacy_model.model_version import FINETUNED_MODEL_VERSION
+
+model = f"../custom_spacy_model/${FINETUNED_MODEL_VERSION}"
 
 nlp = spacy.load(model)
 

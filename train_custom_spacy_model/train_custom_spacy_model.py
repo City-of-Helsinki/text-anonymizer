@@ -13,8 +13,8 @@ from evaluation import evaluate_nlp
 print("Starting fine tuning of spacy model for Finnish names, helsinki streets and areas")
 
 AREAS_TEST_DATA_SIZE = 175
-STREETS_TEST_DATA_SIZE = 500
-NAMES_TEST_DATA_SIZE = 500
+STREETS_TEST_DATA_SIZE = 975
+NAMES_TEST_DATA_SIZE = 1055
 
 
 exec_ner = True
@@ -31,7 +31,7 @@ NAME_ENTITY = 'PERSON'
 
 base_model = "fi_core_news_lg"
 nlp = spacy.load(base_model)
-target_path = "../custom_spacy_model/fi_datahel_spacy-0.0.3"
+target_path = f"../custom_spacy_model/FINETUNED_MODEL_VERSION"
 
 this_dir, this_filename = os.path.split(__file__)
 
@@ -239,7 +239,22 @@ def run_test(amount=50):
         results1.append(test_areas())
         results1.append(test_streets())
     p = results1.count(True) / (amount * 3) * 100
-    print("Test coverage %", p)
+
+    # Show test results with clear formatting
+    total_tests = amount * 3
+    passed_tests = results1.count(True)
+    print(f"  Test Coverage: {p:.1f}% ({passed_tests}/{total_tests} tests passed)")
+
+    # Provide interpretation
+    if p >= 90:
+        print(f"  ✅ EXCELLENT test coverage!")
+    elif p >= 75:
+        print(f"  ✅ GOOD test coverage")
+    elif p >= 60:
+        print(f"  ⚠️  ACCEPTABLE test coverage")
+    else:
+        print(f"  ❌ LOW test coverage - model needs improvement")
+
     return p
 
 
@@ -1224,12 +1239,18 @@ for i in range(0, len(EVALUATION_SENTENCES)):
 
 def train(training_iterations=1, score_threshold=0, verbose=False):
 
-    print("Train Spacy NER model with names. Iterations = {i}, score threshold = {s}".format(i=training_iterations, s=score_threshold))
-    print("using {l} sentences".format(l=len(TRAIN_DATA)))
-    print("- containing  {n} examples with generated names.".format(n=len(NAME_LIST)))
-    print("- containing  {n} examples with streets.".format(n=len(STREET_LIST)))
-    print("- containing  {n} examples with areas.".format(n=len(AREA_LIST)))
-    print("- containing  {n} examples with random sentences.".format(n=len(FALSE_POSITIVES)))
+    print("\n" + "="*80)
+    print("🚀 STARTING SPACY NER MODEL TRAINING")
+    print("="*80)
+    print(f"Training Configuration:")
+    print(f"  • Iterations: {training_iterations}")
+    print(f"  • Score threshold: {score_threshold}")
+    print(f"  • Total training sentences: {len(TRAIN_DATA)}")
+    print(f"    - Names: {len(NAME_LIST)}")
+    print(f"    - Streets: {len(STREET_LIST)}")
+    print(f"    - Areas: {len(AREA_LIST)}")
+    print(f"    - Negative examples: {len(FALSE_POSITIVES)}")
+    print("="*80 + "\n")
 
     # NER training
     def evaluate(nlp, data, verbose=False):
@@ -1239,18 +1260,26 @@ def train(training_iterations=1, score_threshold=0, verbose=False):
             recall = scores["ents_r"]
             f1_score = scores["ents_f"]
             if verbose:
-                print(f"Precision: {precision:.4f}")
-                print(f"Recall: {recall:.4f}")
-                print(f"F1 Score: {f1_score:.4f}")
+                print(f"  📊 Overall Metrics:")
+                print(f"     Precision: {precision*100:6.2f}%  (How many detected entities are correct)")
+                print(f"     Recall:    {recall*100:6.2f}%  (How many actual entities were found)")
+                print(f"     F1 Score:  {f1_score*100:6.2f}%  (Balanced measure of both)")
         if "ents_per_type" in scores:
             per_type = scores["ents_per_type"]
             if verbose:
+                print(f"  📋 Per Entity Type:")
                 for entity_type, metrics in per_type.items():
-                    print(f"{entity_type}: Precision: {metrics['p']:.4f}, Recall: {metrics['r']:.4f}, F1: {metrics['f']:.4f}")
+                    print(f"     {entity_type:8s}: P={metrics['p']*100:5.1f}%  R={metrics['r']*100:5.1f}%  F1={metrics['f']*100:5.1f}%")
         else:
             if verbose:
-                print("No entity types found", scores)
+                print("  ⚠️  No entity types found", scores)
         return scores
+
+    # Run baseline evaluation on external test set BEFORE any training
+    print("\n" + "📋 BASELINE EVALUATION - External Test Set (Before Training)")
+    print("-" * 80)
+    baseline_eval_results = evaluate_nlp(nlp)
+    print("-" * 80)
 
     if exec_ruler:
         if "entity_ruler" not in nlp.pipe_names:
@@ -1262,14 +1291,21 @@ def train(training_iterations=1, score_threshold=0, verbose=False):
         ruler.add_patterns(build_patterns(_AREAS, AREA_ENTITY))
         ruler.add_patterns(build_patterns(_ORGANIZATIONS, 'ORG'))
         ruler.add_patterns(build_patterns(_SKIP, 'O'))
-        print("Evaluate after entity ruler update")
+        print("📌 Entity Ruler patterns added")
         evaluate(nlp, EVAL_DATA, verbose=verbose)
 
     if exec_ner:
         n_iter = training_iterations
 
-        score = evaluate(nlp, EVAL_DATA)
-        print(f"Scores before update: {score}")
+        print("\n" + "📈 BASELINE EVALUATION (Before Training)")
+        print("-" * 80)
+        score = evaluate(nlp, EVAL_DATA, verbose=True)
+        baseline_f1 = score.get("ents_f", 0.0)
+        baseline_precision = score.get("ents_p", 0.0)
+        baseline_recall = score.get("ents_r", 0.0)
+        print(f"\n⚡ Starting training to improve from baseline F1: {baseline_f1*100:.2f}%")
+        print("-" * 80 + "\n")
+
 
         # Early stopping parameters
         best_f1 = 0
@@ -1277,95 +1313,179 @@ def train(training_iterations=1, score_threshold=0, verbose=False):
         patience_counter = 0
         metrics_history = {'loss': [], 'val_f1': [], 'val_precision': [], 'val_recall': []}
 
+        # Split training data into TRAIN_DATA AND TRAIN_EVAL_DATA
+
+
         other_pipes = [pipe for pipe in nlp.pipe_names if pipe != 'ner']
         with nlp.disable_pipes(*other_pipes):  # only train NER
             optimizer = nlp.resume_training()
+
+            print("🎯 TRAINING IN PROGRESS")
+            print("-" * 80)
+            print(f"{'Iter':>6} | {'Loss':>8} | {'F1':>7} | {'Precision':>9} | {'Recall':>7} | {'Status':>20}")
+            print("-" * 80)
+
             for i in range(n_iter):  # Number of training iterations
                 # Batch up the examples using spaCy's minibatch
                 random.shuffle(TRAIN_DATA)
+                # SPLIT DATA to TRAIN AND TEST
+                train_size = int(0.7 * len(TRAIN_DATA))
+                TRAIN = TRAIN_DATA[:train_size]
+                TEST = TRAIN_DATA[train_size:]
+
+
                 losses = {}
                 # Update the model with the new examples
-                batches = minibatch(TRAIN_DATA, size=compounding(4.0, 32.0, 1.001))
+                batches = minibatch(TRAIN, size=compounding(4.0, 32.0, 1.001))
                 for batch in batches:
                     nlp.update(batch, drop=0.5, losses=losses, sgd=optimizer)
 
                 # Evaluate on validation set
-                val_scores = evaluate(nlp, EVAL_DATA, verbose=False)
+                val_scores = evaluate(nlp, TEST, verbose=False)
                 current_f1 = val_scores.get("ents_f") or 0.0
                 current_precision = val_scores.get("ents_p") or 0.0
                 current_recall = val_scores.get("ents_r") or 0.0
 
                 # Track metrics
-                metrics_history['loss'].append(losses.get('ner', 0.0))
+                loss_value = losses.get('ner', 0.0)
+                metrics_history['loss'].append(loss_value)
                 metrics_history['val_f1'].append(current_f1)
                 metrics_history['val_precision'].append(current_precision)
                 metrics_history['val_recall'].append(current_recall)
 
-                if verbose or i % 5 == 0:
-                    print(f"Iteration {i+1}/{n_iter}: Loss={losses.get('ner', 0.0):.4f}, Eval F1={current_f1:.4f}, Eval Precision={current_precision:.4f}, Eval Recall={current_recall:.4f}")
-
-                # Early stopping check
+                # Determine status indicator
+                status = ""
                 if current_f1 > best_f1:
+                    improvement = (current_f1 - best_f1) * 100
+                    status = f"✅ +{improvement:.2f}% IMPROVED!"
                     best_f1 = current_f1
                     patience_counter = 0
-                    if verbose:
-                        print(f"  → New best F1: {best_f1:.4f}")
                 else:
                     patience_counter += 1
-                    if patience_counter >= patience:
-                        print(f"Early stopping at iteration {i+1} (no improvement for {patience} iterations)")
-                        break
+                    if patience_counter == 1:
+                        status = f"⚠️  No improvement"
+                    else:
+                        status = f"⚠️  No improvement ({patience_counter}/{patience})"
+
+                # Print progress every iteration or when verbose
+                if verbose or i % 5 == 0 or i == n_iter - 1:
+                    print(f"{i+1:6d} | {loss_value:8.4f} | {current_f1*100:6.2f}% | {current_precision*100:8.2f}% | {current_recall*100:6.2f}% | {status}")
+
+                # Early stopping check
+                if patience_counter >= patience:
+                    print("-" * 80)
+                    print(f"🛑 Early stopping at iteration {i+1} (no improvement for {patience} iterations)")
+                    break
+
+            print("-" * 80)
 
         for p in other_pipes:
             nlp.enable_pipe(p)
 
-        print(f"\nBest validation F1 score: {best_f1:.4f}")
-        print(f"Final metrics - Precision: {metrics_history['val_precision'][-1]:.4f}, Recall: {metrics_history['val_recall'][-1]:.4f}")
+        # Calculate improvements
+        f1_improvement = (best_f1 - baseline_f1) * 100
+        precision_improvement = (metrics_history['val_precision'][-1] - baseline_precision) * 100
+        recall_improvement = (metrics_history['val_recall'][-1] - baseline_recall) * 100
+
+        print("\n" + "="*80)
+        print("📊 TRAINING RESULTS SUMMARY")
+        print("="*80)
+        print(f"\n{'Metric':<15} | {'Before':>10} | {'After':>10} | {'Change':>15}")
+        print("-" * 80)
+        print(f"{'F1 Score':<15} | {baseline_f1*100:9.2f}% | {best_f1*100:9.2f}% | {f1_improvement:+14.2f}%")
+        print(f"{'Precision':<15} | {baseline_precision*100:9.2f}% | {metrics_history['val_precision'][-1]*100:9.2f}% | {precision_improvement:+14.2f}%")
+        print(f"{'Recall':<15} | {baseline_recall*100:9.2f}% | {metrics_history['val_recall'][-1]*100:9.2f}% | {recall_improvement:+14.2f}%")
+        print("-" * 80)
+
+        # Overall verdict
+        if f1_improvement > 5:
+            print("✅ EXCELLENT: Training significantly improved the model! (+{:.1f}% F1)".format(f1_improvement))
+        elif f1_improvement > 1:
+            print("✅ GOOD: Training improved the model moderately. (+{:.1f}% F1)".format(f1_improvement))
+        elif f1_improvement > 0:
+            print("⚠️  MINOR: Training showed slight improvement. (+{:.1f}% F1)".format(f1_improvement))
+        else:
+            print("❌ NO EFFECT: Training did not improve the model. ({:.1f}% F1)".format(f1_improvement))
+
+        print("="*80 + "\n")
+
+    # Run evaluation on external test set AFTER training
+    print("\n" + "📋 FINAL EVALUATION - External Test Set (After Training)")
+    print("-" * 80)
+    final_eval_results = evaluate_nlp(nlp)
+    print("-" * 80)
+
     test_score = 0
-    eval_results = evaluate_nlp(nlp)
 
     if exec_test:
-        print("\nAfter training test coverage is now: ")
+        print("\n" + "🧪 RUNNING COMPREHENSIVE TESTS")
+        print("-" * 80)
         test_score = run_test(amount=100)
-        print(f"\nScores after entity ruler update:")
-        scores = evaluate(nlp, EVAL_DATA)
-        print(scores)
+        print(f"\n📊 Final Evaluation on Test Set:")
+        print("-" * 80)
+        scores = evaluate(nlp, EVAL_DATA, verbose=True)
+        print("-" * 80)
 
     if save_model:
+        print("\n" + "💾 MODEL SAVING")
+        print("-" * 80)
         if test_score > score_threshold:
-            print(f"Saving model with score {test_score} to {target_path}")
+            print(f"✅ Model meets threshold ({test_score:.2f}% > {score_threshold}%)")
+            print(f"📁 Saving model to: {target_path}")
             nlp.to_disk(target_path)
+            print("✅ Model saved successfully!")
         else:
-            print(f"Model test score {test_score} is below threshold {score_threshold}, not saving model.")
-    return test_score, eval_results
+            print(f"❌ Model does not meet threshold ({test_score:.2f}% ≤ {score_threshold}%)")
+            print("⚠️  Model NOT saved.")
+        print("-" * 80)
+    return test_score, final_eval_results
 
 
 if __name__ == "__main__":
-    iterations = [30]  # Increased from 1 to 30 for better training with early stopping
+    iterations = [1]  # More than 1 iteration seem to make model worse
     test_score = 0
     highest_score = 0
     results = []
     timestamp = datetime.datetime.now().strftime('%Y.%m.%d %H:%M')
+
+    print("\n" + "="*80)
+    print("🎓 SPACY NER MODEL FINE TUNING - FINNISH TEXT ANONYMIZER")
+    print("="*80)
+    print(f"Base Model: {base_model}")
+    print(f"Training Data Size: Names={NAMES_TEST_DATA_SIZE}, Streets={STREETS_TEST_DATA_SIZE}, Areas={AREAS_TEST_DATA_SIZE}")
+    print(f"Timestamp: {timestamp}")
+    print("="*80 + "\n")
+
     with open(f"training_{timestamp}.txt", "a") as f:
         f.write(f"NAMES: {NAMES_TEST_DATA_SIZE} ")
         f.write(f"STREETS: {STREETS_TEST_DATA_SIZE} ")
         f.write(f"AREAS: {AREAS_TEST_DATA_SIZE} \n")
+
     for i in iterations:
-        print(f"\n\n\nTraining with {i} iterations\n\n\n")
         test_score, eval_results = train(training_iterations=i, score_threshold=highest_score)
-        print(f"Test score after {i} iterations: {test_score}")
+
         if test_score > highest_score:
             highest_score = test_score
+
         # log to file
         with open("training.log", "a") as f:
-            f.write(f"{datetime.datetime.now().strftime('%Y.%m.%d %H:%M')}: Training with {i} iterations. Test score: {test_score}. Model {base_model}.  Augmented training data: Names {NAMES_TEST_DATA_SIZE}, Streets {STREETS_TEST_DATA_SIZE}, Areas {AREAS_TEST_DATA_SIZE}\n")
-        stats = "Iterations " + str(i) + ". Test_score: " + str(test_score) + "\n" + eval_results + "\n\n\n"
+            f.write(f"{datetime.datetime.now().strftime('%Y.%m.%d %H:%M')}: Training with {i} iterations. Test score: {test_score:.2f}%. Model {base_model}.  Augmented training data: Names {NAMES_TEST_DATA_SIZE}, Streets {STREETS_TEST_DATA_SIZE}, Areas {AREAS_TEST_DATA_SIZE}\n")
+
+        stats = f"Iterations: {i}, Test Score: {test_score:.2f}%\n{eval_results}\n"
         results.append(stats)
+
         # Full report
         with open(f"training_{timestamp}.txt", "a") as f:
             f.write("Training run: " + datetime.datetime.now().strftime('%Y.%m.%d %H:%M') + "\n")
             f.write(stats)
 
-    # finally print the results
-    for r in results:
+    # Print final summary
+    print("\n" + "="*80)
+    print("📋 TRAINING SESSION SUMMARY")
+    print("="*80)
+    for idx, r in enumerate(results, 1):
+        print(f"\nRun {idx}:")
         print(r)
+    print("="*80)
+    print(f"🏆 Highest Test Score Achieved: {highest_score:.2f}%")
+    print("="*80)

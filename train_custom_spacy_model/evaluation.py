@@ -4,6 +4,8 @@ from spacy import load
 from spacy.training import Example
 from tabulate import tabulate
 
+from model_version import FINETUNED_MODEL_VERSION
+
 '''
 This script evaluates the trained model with a set of sentences.
 The evaluation data consists of sentences with single entity in each sentence.
@@ -14,7 +16,7 @@ The script evaluates the model with the evaluation data and prints the results.
 def evaluate_nlp(nlp=None):
     if not nlp:
         # Load trained model
-        model_path = "../custom_spacy_model/fi_datahel_spacy-0.0.2"
+        model_path = f"../custom_spacy_model/{FINETUNED_MODEL_VERSION}"
         nlp = load(model_path)
 
     # Entity types
