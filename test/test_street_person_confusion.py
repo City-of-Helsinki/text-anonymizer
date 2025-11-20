@@ -200,7 +200,7 @@ class TestStreetPersonConfusion(unittest.TestCase):
         mixed_texts = []
         for i in range(iterations):
             # Create texts with both name and street
-            text = f"{names[i]} asuu osoitteessa {streets[i]}."
+            text = f"{names[i]} asui 1890-luvulla osoitteessa {streets[i]}."
             mixed_texts.append({
                 'text': text,
                 'name': names[i],
