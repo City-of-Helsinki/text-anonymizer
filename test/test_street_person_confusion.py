@@ -228,6 +228,9 @@ class TestStreetPersonConfusion(unittest.TestCase):
                     'name': item['name'],
                     'street': item['street']
                 })
+            else:
+                # Print success in debug mode
+                print(f"Success: Both entities detected in: '{anonymized}'")
 
         print(f"\nResults for {iterations} mixed context samples:")
         print(f"  - Both entities detected: {iterations - len(issues)} ({((iterations - len(issues))/iterations)*100:.2f}%)")

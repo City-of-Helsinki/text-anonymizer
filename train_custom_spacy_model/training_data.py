@@ -1,330 +1,15 @@
-# NOTE! This script is deprecated and can only be used for copying parts of code for refactoring.
-print("\n\n\n\n\n\n\n\n****************************************************************************")
-print("WARNING: THIS IS DEPRECATED CODE AND SHOULD ONLY BE USED FOR COPYING PARTS OF CODE FOR REFACTORING PURPOSES.")
-print(*"****************************************************************************")
-print("Check for imports to train_custom_spacy_model copy them to the new location.\n\n\n\n\n\n\n\n")
-
-
-import csv
-import datetime
-import itertools
-import os
-import random
-
-import spacy
-from spacy.training import Example
-from spacy.util import minibatch, compounding
-from model_version import FINETUNED_MODEL_VERSION
-from evaluation import evaluate_nlp
-
-print("Starting fine tuning of spacy model for Finnish names, helsinki streets and areas")
-
-# SMALLER, HIGH-QUALITY dataset sizes
-# Observation: 175 area examples worked well - fewer, better samples prevent overfitting
-AREAS_TEST_DATA_SIZE = 150   # Keep small like original successful 175
-STREETS_TEST_DATA_SIZE = 400  # Increased from 200 to better handle streets with personal names
-NAMES_TEST_DATA_SIZE = 200    # Drastically reduced from 900 - quality over quantity
-NEGATIVE_EXAMPLES_SIZE = 500  # Moderate amount of negative examples
-
-# Training configuration
-TRAINING_CONFIG = {
-    'iterations': 10,
-    'dropout': 0.3,            # Higher regularization
-    'learn_rate': 0.001,       # Keep higher rate
-    'patience': 3,             # Stop faster
-    'min_improvement': 0.01,   # 1% improvement required
-    'train_split': 0.8,
-}
-
-exec_ner = True
-exec_test = True
-exec_ruler = True
-save_model = True
-
-# Use fixed seed so training will always be the same
-random.seed(1234)
-
 STREET_ENTITY = 'LOC'
 AREA_ENTITY = 'GPE'
 NAME_ENTITY = 'PERSON'
 
-base_model = "fi_core_news_lg"
-nlp = spacy.load(base_model)
-target_path = f"../custom_spacy_model/{FINETUNED_MODEL_VERSION}"
 
-this_dir, this_filename = os.path.split(__file__)
-#sentence_resources
-_FIRST_NAMES_FILE_PATH = "../test/data/etunimet.csv"
-_FIRST_NAMES_DATA_FILE = os.path.join(this_dir, _FIRST_NAMES_FILE_PATH)
-_FIRST_NAMES = []
-#sentence_resources
-_LAST_NAMES_FILE_PATH = "../test/data/sukunimet.csv"
-_LAST_NAMES_DATA_FILE = os.path.join(this_dir, _LAST_NAMES_FILE_PATH)
-_LAST_NAMES = []
-#sentence_resources
-_STREETS_FILE_PATH = "../test/data/helsinki_kadunnimet.txt"
-_STREETS_DATA_FILE = os.path.join(this_dir, _STREETS_FILE_PATH)
-_STREETS = []
-#sentence_resources
-_AREAS_FILE_PATH = "../test/data/helsinki_alueet.txt"
-_AREAS_DATA_FILE = os.path.join(this_dir, _AREAS_FILE_PATH)
-_AREAS = []
-#sentence_resources
-_PRODUCTS_FILE_PATH = "../test/data/tuotenimet.txt"
-_PRODUCTS_DATA_FILE = os.path.join(this_dir, _PRODUCTS_FILE_PATH)
-_PRODUCTS = []
-#sentence_resources
-_ORGANIZATIONS_FILE_PATH = "../test/data/organisaatiot.txt"
-_ORGANIZATIONS_DATA_FILE = os.path.join(this_dir, _ORGANIZATIONS_FILE_PATH)
-_ORGANIZATIONS = []
-#sentence_resources
-_SKIP_FILE_PATH = "../test/data/ohitettavat.txt"
-_SKIP_DATA_FILE = os.path.join(this_dir, _ORGANIZATIONS_FILE_PATH)
-_SKIP = ['Maisa-järjestelmä']
-
-with open(_LAST_NAMES_DATA_FILE, 'r') as data:
-    for line in csv.reader(data, delimiter=';'):
-        _LAST_NAMES.append(line[0])
-        # take top 2000 last names
-        if len(_LAST_NAMES) >= 2000:
-            break
-
-with open(_FIRST_NAMES_DATA_FILE, 'r') as data:
-    for line in csv.reader(data, delimiter=';'):
-        _FIRST_NAMES.append(line[0] if random.randint(1, 3) > 1 else line[0].lower())
-        # take top 2000 first names
-        if len(_FIRST_NAMES) >= 2000:
-            break
-
-with open(_STREETS_DATA_FILE, 'r') as data:
-    for line in csv.reader(data, delimiter=';'):
-        _STREETS.append(line[0] if random.randint(1, 3) == 1 else line[0].lower())
-        # take top 1000 street names
-        # if len(_STREETS) >= 1000:
-        #     break
-
-with open(_AREAS_DATA_FILE, 'r') as data:
-    for line in csv.reader(data, delimiter=';'):
-        _AREAS.append(line[0] if random.randint(1, 3) == 1 else line[0].lower())
-        # take top 200 area names
-        # if len(_AREAS) >= 200:
-        #     break
-
-with open(_ORGANIZATIONS_FILE_PATH, 'r') as data:
-    for line in csv.reader(data, delimiter=';'):
-        _ORGANIZATIONS.append(line[0] if random.randint(1, 3) == 1 else line[0].lower())
-
-with open(_PRODUCTS_DATA_FILE, 'r') as data:
-    for line in csv.reader(data, delimiter=';'):
-        _PRODUCTS.append(line[0] if random.randint(1, 3) == 1 else line[0].lower())
-
-
-def augment_sentence(sentence, entity_text, entity_type):
-    """Create variations of training sentences to improve robustness"""
-    variations = []
-
-    # Add punctuation variations
-    if not sentence.endswith(('.', '!', '?')):
-        variations.append((sentence + '.', entity_text))
-        variations.append((sentence + '!', entity_text))
-
-    # Add case variations for names (sometimes people write in different cases)
-    if entity_type == NAME_ENTITY and len(variations) < 2:
-        # Already at limit, just return what we have
-        pass
-
-    return variations[:2]  # Limit to avoid too much data
-
-
-def generate_sentence(person, list):
-    sent = ""
-    try:
-        sent = random.choice(list)
-        if '{s}' in sent:
-            sent = sent.replace('{s}', person)
-        if '{adj}' in sent:
-            sent = sent.replace('{adj}', random.choice(ADJECTIVES))
-        if '{adv}' in sent:
-            sent = sent.replace('{adv}', random.choice(ADVERBS))
-
-        s = sent.index(person)
-        e = s + len(person)
-        return sent, s, e
-    except ValueError:
-        print("Error: ", sent, person)
-        return generate_sentence(person, list)
-
-def generate_evaluation_sentence(value, sentence):
-    sent = sentence.format(s=value)
-    s = sent.index(value)
-    e = s + len(value)
-    return sent, s, e
-
-
-def generate_full_names(amount=1):
-    full_names = []
-    for a in range(amount):
-        random_first_name = random.choice(_FIRST_NAMES)
-        # Add 2 first names sometimes
-        if random.randint(1, 50) == 1:
-            random_first_name += ' ' + random.choice(_FIRST_NAMES)
-        elif random.randint(1, 50) == 2:
-            random_first_name += '-' + random.choice(_FIRST_NAMES)
-
-
-        # two part names
-        random_last_name = random.choice(_LAST_NAMES)
-        if random.randint(1, 50) == 3:
-            random_last_name += '-' + random.choice(_LAST_NAMES)
-
-        if random.randint(1, 50) == 4:
-            random_name = random_last_name
-        elif random.randint(1, 50) == 5:
-            random_name = random_first_name
-        else:
-            random_name = random_first_name + ' ' + random_last_name
-        full_names.append(random_name)
-    return full_names
-
-
-def test_text() -> bool:
-    amount = 2
-    names = generate_full_names(amount)
-    names_flattened = list(itertools.chain.from_iterable([a.split(' ') for a in names]))
-
-    # test_text = build_random_sentence(names)
-    test_text = "Tämä on keksitty lause jolla testataan miten hyvin erilaiset nimet tunnistetaan anonymisoitavaksi. " \
-                "Ala-asteen opettaja {name2} antoi pojalle uuden kumin ja kynän. Tästä tuli kaikille hyvä mieli." \
-                "Päivä paistaa ja linnut laulaa, se on todella mukava asia! " \
-                "Kiitos! Terkuin oppilaan vanhempi {name1}. ".format(name1=names[0], name2=names[1])
-    doc = nlp(test_text)
-    correct_label = 0
-    for ent in doc.ents:
-        entity_str = str(ent).replace('\\.', '')
-        if ent.label_ == NAME_ENTITY and entity_str in names:
-            correct_label += 1
-        elif ent.label_ == NAME_ENTITY and entity_str in names_flattened:
-            correct_label += 0.5
-        elif ent.label_ == NAME_ENTITY:
-            # print("Incorrect: ", ent, ent.label_)
-            pass
-    return correct_label >= amount and amount < correct_label + 1
-
-def build_random_sentence(names: list[str]) -> str:
-    s1 = generate_sentence(names[0], EVALUATION_SENTENCES)
-    s2 = generate_sentence(names[1], EVALUATION_SENTENCES)
-    return s1[0] + " " + s2[0]
-#sentence_resources
-def test_areas() -> bool:
-    amount = 2
-    area1 = random.choice(_AREAS)
-    area2 = random.choice(_AREAS)
-    test_text = "Tämä on keksitty lause jolla testataan miten hyvin erilaiset nimet tunnistetaan anonymisoitavaksi. " \
-                "{area1} on loistava alue! Ala-asteen opettaja antoi pojalle uuden kumin ja kynän. Tästä tuli kaikille hyvä mieli." \
-                "Päivä paistaa ja linnut laulaa, se on todella mukava asia! " \
-                "Kiitos! {area2} on mukava paikka asua. ".format(area1=area1, area2=area2)
-    doc = nlp(test_text)
-    correct_label = 0
-    for ent in doc.ents:
-        if str(ent.label_) in [AREA_ENTITY, STREET_ENTITY] and str(ent) in _AREAS:
-            correct_label += 1
-        elif str(ent) in _AREAS:
-            print("Incorrect: ", ent, ent.label_)
-    return correct_label == amount
-
-#sentence_resources
-def test_streets() -> bool:
-    amount = 2
-    street1 = random.choice(_STREETS)
-    street2 = random.choice(_STREETS)
-    test_text = "Tämä on keksitty lause jolla testataan miten hyvin erilaiset katujen nimet tunnistetaan anonymisoitavaksi. " \
-                "Osoitteessa {street1} 17 A 1 on puu, joka tarvitsee apua. " \
-                "Olipa hieno taideteos myös! Terveisin, asukas kadulta {street2}.".format(street1=street1,
-                                                                                          street2=street2)
-    doc = nlp(test_text)
-    correct_label = 0
-    for ent in doc.ents:
-        if str(ent.label_) in [AREA_ENTITY, STREET_ENTITY, 'STREET'] and str(ent) in _STREETS:
-            correct_label += 1
-        elif str(ent) in _STREETS:
-            print("Incorrect: ", ent, ent.label_)
-    return correct_label == amount
-
-
-def run_test(amount=50):
-    results1 = []
-    for i in range(amount):
-        results1.append(test_text())
-        results1.append(test_areas())
-        results1.append(test_streets())
-    p = results1.count(True) / (amount * 3) * 100
-
-    # Show test results with clear formatting
-    total_tests = amount * 3
-    passed_tests = results1.count(True)
-    print(f"  Test Coverage: {p:.1f}% ({passed_tests}/{total_tests} tests passed)")
-
-    # Provide interpretation
-    if p >= 90:
-        print(f"  ✅ EXCELLENT test coverage!")
-    elif p >= 75:
-        print(f"  ✅ GOOD test coverage")
-    elif p >= 60:
-        print(f"  ⚠️  ACCEPTABLE test coverage")
-    else:
-        print(f"  ❌ LOW test coverage - model needs improvement")
-
-    return p
-
-
-def build_patterns(data, label):
-    print(f"Build {len(data)} patterns for  {label}")
-    patterns = []
-    for s in data:
-        patterns.append({'pattern': s, 'label': label})
-    return patterns
-
-
-def validate_entity_boundaries(text, start, end, entity_text):
-    """Ensure entities align correctly with text"""
-    actual_text = text[start:end]
-    if actual_text.strip() != entity_text.strip():
-        print(f"⚠️  Boundary mismatch: '{actual_text}' vs '{entity_text}'")
-        return False
-    return True
-
-
-def augment_street_variations(street, max_variations=2):
-    """Generate diverse variations with different suffixes"""
-    street_suffixes = ['llä', 'lle', 'lta', 'ltä', 'lla', 'n', 'ksi', 'ssa', 'ssä', 'sta', 'stä']
-    # Avoid duplicates if street already has suffix
-    available_suffixes = [s for s in street_suffixes if not street.endswith(s)]
-    num_variations = min(max_variations, len(available_suffixes))
-    if num_variations == 0:
-        return []
-    suffixes = random.sample(available_suffixes, num_variations)
-    return [f"{street}{suffix}" for suffix in suffixes]
-
-#sentence_resources
-ADVERBS = ['hyvin', 'mukavasti', 'tyylikkäästi', 'oudosti', 'pohdiskellen', 'tuttavallisesti',
-           'nopeasti', 'hitaasti', 'iloisesti', 'surullisesti', 'rauhallisesti', 'kiireisesti']
-ADJECTIVES = ['hieno', 'mukava', 'tyylikäs', 'outo', 'pohdiskeleva', 'tuttavallinen', 'kiva',
-              'hauska', 'kummallinen', 'mielenkiintoinen', 'kaunis', 'ruma', 'iso', 'pieni',
-              'vanha', 'uusi', 'kallis', 'halpa']
-
-
-
-print("Building test data for training")
-# areas
-print(f"Generating {AREAS_TEST_DATA_SIZE} sentences with areas")
-print(f"Generating {STREETS_TEST_DATA_SIZE} sentences with streets")
-print(f"Generating {NAMES_TEST_DATA_SIZE} sentences with names")
-#sentence_resources
-AREA_LIST = random.sample(_AREAS, AREAS_TEST_DATA_SIZE)
-STREET_LIST = random.sample(_STREETS, STREETS_TEST_DATA_SIZE)
-NAME_LIST = generate_full_names(NAMES_TEST_DATA_SIZE)
-TRAIN_DATA = []
+# Here you can add more sentence templates as needed, insert {s} where the name should go
+# Sentences can have typos and can be grammatically incorrect to simulate real-world data
+# More is more as the model needs to generalize well, so add plenty of variations
 SENTENCES_NAME = [
+    'Maisa-järjestelmässä on kirjautumisongelmia, kertoi ATK-tukihenkilö {s}.',
+    'Emme ole voineet kirjautua Maisaan vaikka it-tuen {s} neuvoi miten se tehdään.',
+    'Maisa on Apotti-järjestelmän asiakasportaali, joka yhdistää sosiaalihuollon ja terveydenhuollon sähköisen asioinnin yhteen kanavaan kertoi HUS:n edustaja {s}.',
     '{s} on hyvä tyyppi.',
     '{s} on suomalainen miehen etunimi.',
     '{s} vakiintui Suomessa nimimuotona jo keskiajalla.',
@@ -669,7 +354,11 @@ SENTENCES_NAME = [
     'Konsultti {s} järjesti onnistuneen yrityksen tiimipäivän, jossa oli tylsää ja opittiin vähän.',
     'Johtaja {s} kritisoi uutta lakia.'
 ]
-#sentence_resources
+
+
+# Sentences specifically for streets with placeholder {s} for street names
+# Try to cover a variety of contexts where street names might appear, especially in reports, complaints, or general statements.
+
 SENTENCES_STREETS = [
     'Toivotaan energiahuoltoa {s} 6 sähköt roikkuu sähkölinjalla.',
     'Osoitteessa {s} tien puolella on kivi.',
@@ -688,7 +377,7 @@ SENTENCES_STREETS = [
     'Auraus ei tullut tiistaina {s} 12.',
     '{s} 1 aurataan liian usein.',
     'Malmin {s} 5 A 1 varpuset nokkii murusia.',
-    'Toivon aurausta {s}lle.',
+    'Toivon aurausta kadulle {s}',
     'AsOy {s}.',
     '{s} risteykseen kerääntyy sateella suuri lammikko vettä.',
     'Karhujen kerhotalo {s} 11 B ottaa vastaan reippaita urheilijoita ympäri vuoden.',
@@ -1164,74 +853,6 @@ EVALUATION_LABELS = [
     None,
 ]
 
-
-
-
-print("Formatting training data into spacy examples...")
-
-for s in NAME_LIST:
-    sentence, start, end = generate_sentence(s, SENTENCES_NAME)
-    doc = nlp(sentence)
-    entities = [[start, end, NAME_ENTITY]]
-    example: Example = Example.from_dict(doc, {"entities": entities})
-    TRAIN_DATA.append(example)
-
-street_suffixes = ['llä', 'lle', 'lta', 'ltä', 'lla', 'n', 'ksi', 'ssa', 'ssä', 'sta', 'stä']
-for s in STREET_LIST:
-    s_original = s
-    s = s.lower()
-
-    # Choose sentence templates based on street name type
-    if not ' ' in s and any(x in s for x in ['katu', 'tie', 'polku']):
-        # use full set only with traditional street names
-        sentence, start, end = generate_sentence(s, SENTENCES_STREETS)
-    else:
-        sentence, start, end = generate_sentence(s, SENTENCES_STREETS[:11])
-
-    parts = s.split(' ')
-    entities = []
-    if len(parts) > 1:
-        i = start
-        for p in parts:
-            j = i + len(p)
-            entities.append([i, j, STREET_ENTITY])
-            i = j + 1
-    else:
-        entities = [[start, end, STREET_ENTITY]]
-
-    doc = nlp(sentence)
-    example: Example = Example.from_dict(doc, {"text": sentence, "entities": entities})
-    TRAIN_DATA.append(example)
-
-    # Add LIMITED variations with Finnish case suffixes - only for single-word streets
-    # Reduced from creating 3x to only 1-2 variations per street
-    if not ' ' in s and random.random() < 0.3:  # Only 30% of streets get variations
-        variations = augment_street_variations(s, max_variations=1)
-        for s_var in variations:
-            sentence_var, start_var, end_var = generate_sentence(s_var, SENTENCES_STREETS[:5])
-            doc_var = nlp(sentence_var)
-            entities_var = [[start_var, end_var, STREET_ENTITY]]
-            example_var: Example = Example.from_dict(doc_var, {"text": sentence_var, "entities": entities_var})
-            TRAIN_DATA.append(example_var)
-
-for s in AREA_LIST:
-    sentence, start, end = generate_sentence(s.lower(), SENTENCES_AREAS)
-    doc = nlp(sentence)
-    entities = [[start, end, AREA_ENTITY]]
-    example: Example = Example.from_dict(doc, {"entities": entities})
-    TRAIN_DATA.append(example)
-
-
-
-# ============================================================================
-# MIXED CONTEXT EXAMPLES - CRITICAL for recognizing multiple entities
-# ============================================================================
-print("\n" + "="*80)
-print("🔀 Generating MIXED CONTEXT examples (PERSON + STREET/AREA)")
-print("="*80)
-#sentence_resources
-# Define mixed context patterns - SIMPLIFIED to most effective patterns
-# Focus on patterns that directly match real test data scenarios
 MIXED_PATTERNS_PERSON_STREET = [
     # Most common pattern from test data
     "Palautteessa mainitaan, että tunnettu kuvataiteilija {name} asui osoitteessa {street} {number}.",
@@ -1239,264 +860,54 @@ MIXED_PATTERNS_PERSON_STREET = [
     "Talonmiehenä pidetty {name} on toiminut osoitteessa {street} {number} jo kahdentoista vuoden ajan.",
     # Secondary patterns
     "{name} mainitsi että {street} {number} rakennus on historiallinen.",
-    "{name} huomautti että {street} valaistus kaipaa korjausta.",
-    "{name} valittaa että {street} kunto on huono.",
-    "{name} toivoo että {street} saisi lisää puita.",
-    "{name} sanoo että {street} {number} bussipysäkki tarvitsee katoksen.",
+    "{name} huomautti että {street}n valaistus kaipaa korjausta.",
+    "{name} valittaa että {street}n kunto on huono.",
+    "{name} toivoo että {street}lla saisi olla lisää puita.",
+    "{name} sanoo että {street}lla bussin {number} bussipysäkki tarvitsee katoksen.",
 ]
 #sentence_resources
 MIXED_PATTERNS_PERSON_AREA = [
-    "{name} kertoi että {area} alue kaipaa investointeja.",
+    "{name} kertoi että {area} kaipaa investointeja.",
     "{name} mainitsi että {area} puisto on kaunis.",
-    "{name} valittaa että {area} liikenneyhteydet ovat huonot.",
-    "{name} kiittää että {area} palvelut ovat parantuneet.",
+    "{name} valittaa että {area}n liikenneyhteydet ovat huonot.",
+    "{name} kiittää että {area}n palvelut ovat parantuneet.",
     "{name} ehdottaa että {area} tarvitsee lisää valaistusta.",
-    "{name} huomauttaa että {area} turvallisuus on parantunut.",
+    "{name} huomauttaa että {area}ssa turvallisuus on parantunut.",
     "{name} sanoo että {area} on mukava asuinalue.",
     "Asukas {name} mainitsee että {area} kehittyy nopeasti.",
 ]
 #sentence_resources
 MIXED_PATTERNS_PERSON_STREET_AREA = [
-    "{name} kertoi että {area}ssa {street} {number} kauppa suljetaan.",
+    "{name} kertoi että {area}, {street} {number} kauppa suljetaan.",
     "{name} mainitsi että {area} alueella {street} tarvitsee korjausta.",
-    "{name} huomautti että {area}n {street} {number} kohdalla on ongelma.",
-    "{name} sanoo että {area}ssa {street} puisto on hieno.",
+    "{area} -lehdessä {name} huomautti että {street} {number} kohdalla on ongelma.",
+    "{name} sanoo, että uusi {area}-puisto osoitteessa {street} on hieno.",
 ]
 #sentence_resources
 # Additional realistic patterns for varied contexts - ONLY patterns with nominative case
 MIXED_PATTERNS_PERSON_STREET_EXTENDED = [
-    "Vaikka {street} kentällä olisi jäätä {name} tulee aina katsomaan onko pelaajia.",
+    "Vaikka {street}n kentällä olisi jäätä {name} tulee aina katsomaan onko pelaajia.",
     "{name} muistaa kun {street} {number} vieressä oli vielä vanha koulu.",
     "{name} kertoo että {street} {number} kohdalla oli ennen kauppa.",
     "{name} toivoo että {street} {number} vanha puu säilytetään.",
     "{name} on aina ihaillut {street} {number} rakennuksen arkkitehtuuria.",
     "Ennen {street} {number} tontilla oli puutarha, kertoo {name}.",
     "{name} muistelee että {street} oli hänen koulutiensä.",
-    "{name} totesi että {street} historiaa pitäisi vaalia.",
+    "{name} totesi että {street}n historiaa pitäisi vaalia.",
     "{name} kirjoitti että {street} {number} on historiallinen.",
     "{name} ehdotti että {street} {number} kunnostetaan.",
 ]
 
-# Generate PERSON + STREET examples (300 examples - increased from 150)
-# Focus on quantity for this critical pattern
-mixed_person_street_count = 0
-mixed_person_street_skipped = 0
+ADVERBS = ['hyvin', 'mukavasti', 'tyylikkäästi', 'oudosti', 'pohdiskellen', 'tuttavallisesti',
+           'nopeasti', 'hitaasti', 'iloisesti', 'surullisesti', 'rauhallisesti', 'kiireisesti',
+           'varovasti', 'rohkeasti', 'tarkasti', 'huolellisesti', 'epävarmasti', 'varmasti',
+           'energisesti', 'väsymättä', 'innokkaasti', 'epätoivoisesti', 'optimistisesti',
+           'realistisesti', 'unelmoiden' ]
+ADJECTIVES = ['hieno', 'mukava', 'tyylikäs', 'outo', 'pohdiskeleva', 'tuttavallinen', 'kiva',
+              'hauska', 'kummallinen', 'mielenkiintoinen', 'kaunis', 'ruma', 'iso', 'pieni',
+              'vanha', 'uusi', 'kallis', 'halpa', 'kiva', 'ihana', 'kamala', 'pelottava', 'uusi',
+              'moderni', 'perinteinen', 'värikäs', 'harmaa', 'rauhallinen', 'vilkas', 'hiljainen']
 
-for _ in range(500):  # Generate more to account for skipped examples
-    name = random.choice(NAME_LIST)
-    street = random.choice(STREET_LIST)
-    number = random.randint(1, 150)
-
-    # Choose from realistic feedback patterns
-    all_patterns = MIXED_PATTERNS_PERSON_STREET + MIXED_PATTERNS_PERSON_STREET_EXTENDED
-    pattern = random.choice(all_patterns)
-
-    # Generate text
-    text = pattern.format(name=name, street=street.lower(), number=number)
-
-    # Find PERSON entity - must match exactly
-    name_start = text.find(name)
-    if name_start == -1:
-        mixed_person_street_skipped += 1
-        continue
-    name_end = name_start + len(name)
-
-    # Verify the name is not modified (no case endings)
-    actual_name = text[name_start:name_end]
-    if actual_name != name:
-        mixed_person_street_skipped += 1
-        continue
-
-    # Find STREET entity (LOC)
-    street_lower = street.lower()
-    street_start = text.find(street_lower)
-    if street_start == -1:
-        mixed_person_street_skipped += 1
-        continue
-    street_end = street_start + len(street_lower)
-
-    # Verify the street is not modified
-    actual_street = text[street_start:street_end]
-    if actual_street != street_lower:
-        mixed_person_street_skipped += 1
-        continue
-
-    # Create entities list (order matters - earlier position first)
-    entities = []
-    if name_start < street_start:
-        entities = [
-            [name_start, name_end, NAME_ENTITY],
-            [street_start, street_end, STREET_ENTITY]
-        ]
-    else:
-        entities = [
-            [street_start, street_end, STREET_ENTITY],
-            [name_start, name_end, NAME_ENTITY]
-        ]
-
-    # Validate no overlap and proper token boundaries
-    if name_end <= street_start or street_end <= name_start:
-        doc = nlp(text)
-        # Double-check alignment with spaCy's tokenizer
-        try:
-            example = Example.from_dict(doc, {"entities": entities})
-            TRAIN_DATA.append(example)
-            mixed_person_street_count += 1
-
-            # Stop when we have enough valid examples
-            if mixed_person_street_count >= 300:
-                break
-        except Exception as e:
-            mixed_person_street_skipped += 1
-            continue
-
-print(f"  ✅ Added {mixed_person_street_count} PERSON + STREET examples (skipped {mixed_person_street_skipped} misaligned)")
-
-# Generate PERSON + AREA examples (100 examples - reduced from 300)
-mixed_person_area_count = 0
-mixed_person_area_skipped = 0
-
-for _ in range(150):  # Generate more to account for skipped
-    name = random.choice(NAME_LIST)
-    area = random.choice(AREA_LIST)
-    pattern = random.choice(MIXED_PATTERNS_PERSON_AREA)
-
-    # Generate text
-    text = pattern.format(name=name, area=area.lower())
-
-    # Find PERSON entity - must match exactly
-    name_start = text.find(name)
-    if name_start == -1:
-        mixed_person_area_skipped += 1
-        continue
-    name_end = name_start + len(name)
-
-    # Verify the name is not modified
-    actual_name = text[name_start:name_end]
-    if actual_name != name:
-        mixed_person_area_skipped += 1
-        continue
-
-    # Find AREA entity (GPE)
-    area_lower = area.lower()
-    area_start = text.find(area_lower)
-    if area_start == -1:
-        mixed_person_area_skipped += 1
-        continue
-    area_end = area_start + len(area_lower)
-
-    # Verify the area is not modified
-    actual_area = text[area_start:area_end]
-    if actual_area != area_lower:
-        mixed_person_area_skipped += 1
-        continue
-
-    # Create entities list (order matters - earlier position first)
-    entities = []
-    if name_start < area_start:
-        entities = [
-            [name_start, name_end, NAME_ENTITY],
-            [area_start, area_end, AREA_ENTITY]
-        ]
-    else:
-        entities = [
-            [area_start, area_end, AREA_ENTITY],
-            [name_start, name_end, NAME_ENTITY]
-        ]
-
-    # Validate no overlap
-    if name_end <= area_start or area_end <= name_start:
-        doc = nlp(text)
-        try:
-            example = Example.from_dict(doc, {"entities": entities})
-            TRAIN_DATA.append(example)
-            mixed_person_area_count += 1
-
-            # Stop when we have enough valid examples
-            if mixed_person_area_count >= 100:
-                break
-        except Exception as e:
-            mixed_person_area_skipped += 1
-            continue
-
-print(f"  ✅ Added {mixed_person_area_count} PERSON + AREA examples (skipped {mixed_person_area_skipped} misaligned)")
-
-# Generate PERSON + STREET + AREA examples (50 examples - reduced from 100)
-mixed_triple_count = 0
-mixed_triple_skipped = 0
-
-for _ in range(80):  # Generate more to account for skipped
-    name = random.choice(NAME_LIST)
-    street = random.choice(STREET_LIST)
-    area = random.choice(AREA_LIST)
-    number = random.randint(1, 150)
-    pattern = random.choice(MIXED_PATTERNS_PERSON_STREET_AREA)
-
-    # Generate text
-    text = pattern.format(name=name, street=street.lower(), area=area.lower(), number=number)
-
-    # Find entities - all must match exactly
-    name_start = text.find(name)
-    street_lower = street.lower()
-    street_start = text.find(street_lower)
-    area_lower = area.lower()
-    area_start = text.find(area_lower)
-
-    if name_start == -1 or street_start == -1 or area_start == -1:
-        mixed_triple_skipped += 1
-        continue
-
-    name_end = name_start + len(name)
-    street_end = street_start + len(street_lower)
-    area_end = area_start + len(area_lower)
-
-    # Verify all entities are not modified
-    if (text[name_start:name_end] != name or
-        text[street_start:street_end] != street_lower or
-        text[area_start:area_end] != area_lower):
-        mixed_triple_skipped += 1
-        continue
-
-    # Create sorted entities list
-    entity_list = [
-        (name_start, name_end, NAME_ENTITY),
-        (street_start, street_end, STREET_ENTITY),
-        (area_start, area_end, AREA_ENTITY)
-    ]
-    entity_list.sort(key=lambda x: x[0])  # Sort by start position
-
-    # Validate no overlaps
-    valid = True
-    for i in range(len(entity_list) - 1):
-        if entity_list[i][1] > entity_list[i+1][0]:
-            valid = False
-            break
-
-    if valid:
-        # Convert to list format
-        entities = [[e[0], e[1], e[2]] for e in entity_list]
-        doc = nlp(text)
-
-        try:
-            example = Example.from_dict(doc, {"entities": entities})
-            TRAIN_DATA.append(example)
-            mixed_triple_count += 1
-
-            # Stop when we have enough valid examples
-            if mixed_triple_count >= 50:
-                break
-        except Exception as e:
-            mixed_triple_skipped += 1
-            continue
-    else:
-        mixed_triple_skipped += 1
-
-print(f"  ✅ Added {mixed_triple_count} PERSON + STREET + AREA examples (skipped {mixed_triple_skipped} misaligned)")
-print(f"  📊 Total mixed context examples: {mixed_person_street_count + mixed_person_area_count + mixed_triple_count}")
-print("="*80 + "\n")
-#sentence_resources
-# Add here example sentences that are used to teach not anonymizable sentences
-# SIGNIFICANTLY EXPANDED: 500+ negative examples to balance the training data
 FALSE_POSITIVES = [
     # Original examples
     'Aura on naisen nimi mutta tässä yhteydessä viittaan kalustoon joka poistaa lunta kadulta.',
@@ -1900,7 +1311,6 @@ FALSE_POSITIVES = [
     'Huoltaminen pitää toimintakuntoisena.',
     'Säätäminen optimoi toiminnan.',
     'Testaaminen varmistaa laadun.',
-    # Abstract concepts (50 examples)
     'Rakkaus on voimakas tunne.',
     'Viha on tuhoisaa.',
     'Ilo on elämän suola.',
@@ -1911,7 +1321,7 @@ FALSE_POSITIVES = [
     'Epätoivo on synkkää.',
     'Luottamus rakentaa suhteita.',
     'Epäluulo hajottaa yhteyttä.',
-    'Kateeus on myrkkyä.',
+    'Kateus on myrkkyä.',
     'Ylpeys voi olla hyvästä.',
     'Nöyryys on hyve.',
     'Ahneus johtaa tuhoon.',
@@ -1951,7 +1361,6 @@ FALSE_POSITIVES = [
     'Ikuisuus on käsittämätöntä.',
     'Hetki on arvokas.',
     'Nykyisyys on ainoa varma.',
-    # Common phrases and expressions (50 examples)
     'Hyvää huomenta kaikille!',
     'Mitä kuuluu sinulle tänään?',
     'Kaikki hyvin täällä, kiitos.',
@@ -2037,313 +1446,3 @@ NEGATIVE_TEMPLATES = [
     'Elokuussa monet lomailevat ja nauttivat kesästä.',
     'Marraskuu on usein harmaa ja sateinen kuukausi Suomessa.'
 ]
-
-# Generate 100 more negative examples from templates
-for _ in range(100):
-    template = random.choice(NEGATIVE_TEMPLATES)
-    sentence = template.format(
-        adj=random.choice(ADJECTIVES),
-        adv=random.choice(ADVERBS)
-    )
-    FALSE_POSITIVES.append(sentence)
-
-print(f"Generated {len(FALSE_POSITIVES)} negative examples (sentences with no entities)")
-
-for sentence in FALSE_POSITIVES:
-    doc = nlp(sentence)
-    c = 0
-    entities = []
-    for s in sentence.split(' '):
-        start = c
-        end = start + len(s)
-        entities.append([start, end, 'O'])
-        c = end + 1
-
-    example: Example = Example.from_dict(doc, {"entities": entities})
-    TRAIN_DATA.append(example)
-
-EVAL_DATA = []
-for i in range(0, len(EVALUATION_SENTENCES)):
-    sentence = EVALUATION_SENTENCES[i]
-    s = EVALUATION_VALUES[i]
-    label = EVALUATION_LABELS[i]
-    if s:
-        sentence, start, end = generate_evaluation_sentence(s.lower(), sentence)
-        doc = nlp(sentence)
-        entities = [[start, end, label]]
-        example: Example = Example.from_dict(doc, {"entities": entities})
-    else:
-        example: Example = Example.from_dict(nlp(sentence), {"entities": []})
-    EVAL_DATA.append(example)
-
-# Heikki on kissa
-# {text: 'Heikki on kissa', entities=[[14, 17, 'ELÄIN']]}
-
-def train(training_iterations=1, score_threshold=0, verbose=False):
-
-    print("\n" + "="*80)
-    print("🚀 STARTING SPACY NER MODEL TRAINING")
-    print("="*80)
-    print(f"Training Configuration:")
-    print(f"  • Iterations: {training_iterations}")
-    print(f"  • Score threshold: {score_threshold}")
-    print(f"  • Total training sentences: {len(TRAIN_DATA)}")
-    print(f"    - Names: {len(NAME_LIST)}")
-    print(f"    - Streets: {len(STREET_LIST)}")
-    print(f"    - Areas: {len(AREA_LIST)}")
-    print(f"    - Negative examples: {len(FALSE_POSITIVES)}")
-    print("="*80 + "\n")
-
-    # NER training
-    def evaluate(nlp, data, verbose=False):
-        scores = nlp.evaluate(data)
-        if "ents_p" in scores:
-            precision = scores["ents_p"]
-            recall = scores["ents_r"]
-            f1_score = scores["ents_f"]
-            if verbose:
-                print(f"  📊 Overall Metrics:")
-                print(f"     Precision: {precision*100:6.2f}%  (How many detected entities are correct)")
-                print(f"     Recall:    {recall*100:6.2f}%  (How many actual entities were found)")
-                print(f"     F1 Score:  {f1_score*100:6.2f}%  (Balanced measure of both)")
-        if "ents_per_type" in scores:
-            per_type = scores["ents_per_type"]
-            if verbose:
-                print(f"  📋 Per Entity Type:")
-                for entity_type, metrics in per_type.items():
-                    print(f"     {entity_type:8s}: P={metrics['p']*100:5.1f}%  R={metrics['r']*100:5.1f}%  F1={metrics['f']*100:5.1f}%")
-        else:
-            if verbose:
-                print("  ⚠️  No entity types found", scores)
-        return scores
-
-    # Run baseline evaluation on external test set BEFORE any training
-    print("\n" + "📋 BASELINE EVALUATION - External Test Set (Before Training)")
-    print("-" * 80)
-    baseline_eval_results = evaluate_nlp(nlp)
-    print("-" * 80)
-
-    if exec_ruler:
-        if "entity_ruler" not in nlp.pipe_names:
-            ruler = nlp.add_pipe("entity_ruler", after="ner", config={"phrase_matcher_attr": "LOWER", "overwrite_ents": True})
-        else:
-            ruler = nlp.get_pipe("entity_ruler")
-        print("Add generated patterns to Entity Ruler...")
-        ruler.add_patterns(build_patterns(_PRODUCTS, 'PRODUCT'))
-        ruler.add_patterns(build_patterns(_STREETS, STREET_ENTITY))
-        ruler.add_patterns(build_patterns(_AREAS, AREA_ENTITY))
-        ruler.add_patterns(build_patterns(_ORGANIZATIONS, 'ORG'))
-        ruler.add_patterns(build_patterns(_SKIP, 'O'))
-        print("📌 Entity Ruler patterns added")
-        evaluate(nlp, EVAL_DATA, verbose=verbose)
-
-    if exec_ner:
-        n_iter = training_iterations
-
-        print("\n" + "📈 BASELINE EVALUATION (Before Training)")
-        print("-" * 80)
-        score = evaluate(nlp, EVAL_DATA, verbose=True)
-        baseline_f1 = score.get("ents_f", 0.0)
-        baseline_precision = score.get("ents_p", 0.0)
-        baseline_recall = score.get("ents_r", 0.0)
-        print(f"\n⚡ Starting training to improve from baseline F1: {baseline_f1*100:.2f}%")
-        print("-" * 80 + "\n")
-
-        # Split training data ONCE before training (80/20 split)
-        random.shuffle(TRAIN_DATA)
-        train_split_idx = int(TRAINING_CONFIG['train_split'] * len(TRAIN_DATA))
-        train_examples = TRAIN_DATA[:train_split_idx]
-        dev_examples = TRAIN_DATA[train_split_idx:]
-
-        print(f"📊 Data Split: {len(train_examples)} training, {len(dev_examples)} validation examples\n")
-
-        # Early stopping parameters from config
-        best_f1 = 0
-        patience = TRAINING_CONFIG['patience']
-        min_improvement = TRAINING_CONFIG['min_improvement']
-        patience_counter = 0
-        metrics_history = {'loss': [], 'val_f1': [], 'val_precision': [], 'val_recall': []}
-
-        other_pipes = [pipe for pipe in nlp.pipe_names if pipe != 'ner']
-        with nlp.disable_pipes(*other_pipes):  # only train NER
-            optimizer = nlp.resume_training()
-
-            # Configure optimizer with learning rate from config
-            optimizer.learn_rate = TRAINING_CONFIG['learn_rate']
-            optimizer.L2 = 1e-6  # L2 regularization
-
-            print("🎯 TRAINING IN PROGRESS")
-            print("-" * 80)
-            print(f"Learning Rate: {TRAINING_CONFIG['learn_rate']}, Dropout: {TRAINING_CONFIG['dropout']}")
-            print(f"{'Iter':>6} | {'Loss':>8} | {'F1':>7} | {'Precision':>9} | {'Recall':>7} | {'Status':>20}")
-            print("-" * 80)
-
-            for i in range(n_iter):  # Number of training iterations
-                # Shuffle training data each iteration
-                random.shuffle(train_examples)
-
-                losses = {}
-                # Update the model with the training examples
-                batches = minibatch(train_examples, size=compounding(4.0, 32.0, 1.001))
-                for batch in batches:
-                    nlp.update(batch, drop=TRAINING_CONFIG['dropout'], losses=losses, sgd=optimizer)
-
-                # Evaluate on validation set
-                val_scores = evaluate(nlp, dev_examples, verbose=False)
-                current_f1 = val_scores.get("ents_f") or 0.0
-                current_precision = val_scores.get("ents_p") or 0.0
-                current_recall = val_scores.get("ents_r") or 0.0
-
-                # Track metrics
-                loss_value = losses.get('ner', 0.0)
-                metrics_history['loss'].append(loss_value)
-                metrics_history['val_f1'].append(current_f1)
-                metrics_history['val_precision'].append(current_precision)
-                metrics_history['val_recall'].append(current_recall)
-
-                # Determine status indicator with minimum improvement threshold
-                status = ""
-                improvement = current_f1 - best_f1
-                if improvement > min_improvement:
-                    status = f"✅ +{improvement*100:.2f}% IMPROVED!"
-                    best_f1 = current_f1
-                    patience_counter = 0
-                else:
-                    patience_counter += 1
-                    if patience_counter == 1:
-                        status = f"⚠️  No significant improvement"
-                    else:
-                        status = f"⚠️  No improvement ({patience_counter}/{patience})"
-
-                # Print progress every iteration or when verbose
-                if verbose or i % 1 == 0 or i == n_iter - 1:
-                    print(f"{i+1:6d} | {loss_value:8.4f} | {current_f1*100:6.2f}% | {current_precision*100:8.2f}% | {current_recall*100:6.2f}% | {status}")
-
-                # Early stopping check
-                if patience_counter >= patience:
-                    print("-" * 80)
-                    print(f"🛑 Early stopping at iteration {i+1} (no improvement for {patience} iterations)")
-                    break
-
-            print("-" * 80)
-
-        for p in other_pipes:
-            nlp.enable_pipe(p)
-
-        # Calculate improvements
-        f1_improvement = (best_f1 - baseline_f1) * 100
-        precision_improvement = (metrics_history['val_precision'][-1] - baseline_precision) * 100
-        recall_improvement = (metrics_history['val_recall'][-1] - baseline_recall) * 100
-
-        print("\n" + "="*80)
-        print("📊 TRAINING RESULTS SUMMARY")
-        print("="*80)
-        print(f"\n{'Metric':<15} | {'Before':>10} | {'After':>10} | {'Change':>15}")
-        print("-" * 80)
-        print(f"{'F1 Score':<15} | {baseline_f1*100:9.2f}% | {best_f1*100:9.2f}% | {f1_improvement:+14.2f}%")
-        print(f"{'Precision':<15} | {baseline_precision*100:9.2f}% | {metrics_history['val_precision'][-1]*100:9.2f}% | {precision_improvement:+14.2f}%")
-        print(f"{'Recall':<15} | {baseline_recall*100:9.2f}% | {metrics_history['val_recall'][-1]*100:9.2f}% | {recall_improvement:+14.2f}%")
-        print("-" * 80)
-
-        # Overall verdict
-        if f1_improvement > 5:
-            print("✅ EXCELLENT: Training significantly improved the model! (+{:.1f}% F1)".format(f1_improvement))
-        elif f1_improvement > 1:
-            print("✅ GOOD: Training improved the model moderately. (+{:.1f}% F1)".format(f1_improvement))
-        elif f1_improvement > 0:
-            print("⚠️  MINOR: Training showed slight improvement. (+{:.1f}% F1)".format(f1_improvement))
-        else:
-            print("❌ NO EFFECT: Training did not improve the model. ({:.1f}% F1)".format(f1_improvement))
-
-        print("="*80 + "\n")
-
-    # Run evaluation on external test set AFTER training
-    print("\n" + "📋 FINAL EVALUATION - External Test Set (After Training)")
-    print("-" * 80)
-    final_eval_results = evaluate_nlp(nlp)
-    print("-" * 80)
-
-    test_score = 0
-
-    if exec_test:
-        print("\n" + "🧪 RUNNING COMPREHENSIVE TESTS")
-        print("-" * 80)
-        test_score = run_test(amount=100)
-        print(f"\n📊 Final Evaluation on Test Set:")
-        print("-" * 80)
-        scores = evaluate(nlp, EVAL_DATA, verbose=True)
-        print("-" * 80)
-
-    if save_model:
-        print("\n" + "💾 MODEL SAVING")
-        print("-" * 80)
-        if test_score > score_threshold:
-            print(f"✅ Model meets threshold ({test_score:.2f}% > {score_threshold}%)")
-            print(f"📁 Saving model to: {target_path}")
-            nlp.to_disk(target_path)
-            print("✅ Model saved successfully!")
-        else:
-            print(f"❌ Model does not meet threshold ({test_score:.2f}% ≤ {score_threshold}%)")
-            print("⚠️  Model NOT saved.")
-        print("-" * 80)
-    return test_score, final_eval_results
-
-
-if __name__ == "__main__":
-    # Use configuration-based iterations (20 iterations with early stopping)
-    iterations = [TRAINING_CONFIG['iterations']]
-    test_score = 0
-    highest_score = 0
-    results = []
-    timestamp = datetime.datetime.now().strftime('%Y.%m.%d %H:%M')
-
-    print("\n" + "="*80)
-    print("🎓 SPACY NER MODEL FINE TUNING - FINNISH TEXT ANONYMIZER")
-    print("="*80)
-    print(f"Base Model: {base_model}")
-    print(f"Training Data Size: Names={NAMES_TEST_DATA_SIZE}, Streets={STREETS_TEST_DATA_SIZE}, Areas={AREAS_TEST_DATA_SIZE}")
-    print(f"Negative Examples: {len(FALSE_POSITIVES)}")
-    print(f"\nTraining Configuration:")
-    print(f"  • Max Iterations: {TRAINING_CONFIG['iterations']}")
-    print(f"  • Learning Rate: {TRAINING_CONFIG['learn_rate']}")
-    print(f"  • Dropout: {TRAINING_CONFIG['dropout']}")
-    print(f"  • Early Stopping Patience: {TRAINING_CONFIG['patience']}")
-    print(f"  • Min Improvement Threshold: {TRAINING_CONFIG['min_improvement']}")
-    print(f"  • Train/Val Split: {int(TRAINING_CONFIG['train_split']*100)}/{int((1-TRAINING_CONFIG['train_split'])*100)}")
-    print(f"Timestamp: {timestamp}")
-    print("="*80 + "\n")
-
-    with open(f"logs/training_{timestamp}.txt", "a") as f:
-        f.write(f"NAMES: {NAMES_TEST_DATA_SIZE} ")
-        f.write(f"STREETS: {STREETS_TEST_DATA_SIZE} ")
-        f.write(f"AREAS: {AREAS_TEST_DATA_SIZE} ")
-        f.write(f"NEGATIVE: {len(FALSE_POSITIVES)} \n")
-
-    for i in iterations:
-        test_score, eval_results = train(training_iterations=i, score_threshold=highest_score)
-
-        if test_score > highest_score:
-            highest_score = test_score
-
-        # log to file
-        with open("training.log", "a") as f:
-            f.write(f"{datetime.datetime.now().strftime('%Y.%m.%d %H:%M')}: Training with {i} iterations. Test score: {test_score:.2f}%. Model {base_model}.  Training data: Names {NAMES_TEST_DATA_SIZE}, Streets {STREETS_TEST_DATA_SIZE}, Areas {AREAS_TEST_DATA_SIZE}, Negative {len(FALSE_POSITIVES)}\n")
-
-        stats = f"Iterations: {i}, Test Score: {test_score:.2f}%\n{eval_results}\n"
-        results.append(stats)
-
-        # Full report
-        with open(f"training_{timestamp}.txt", "a") as f:
-            f.write("Training run: " + datetime.datetime.now().strftime('%Y.%m.%d %H:%M') + "\n")
-            f.write(stats)
-
-    # Print final summary
-    print("\n" + "="*80)
-    print("📋 TRAINING SESSION SUMMARY")
-    print("="*80)
-    for idx, r in enumerate(results, 1):
-        print(f"\nRun {idx}:")
-        print(r)
-    print("="*80)
-    print(f"🏆 Highest Test Score Achieved: {highest_score:.2f}%")
-    print("="*80)
