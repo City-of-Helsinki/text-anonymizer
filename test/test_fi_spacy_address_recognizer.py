@@ -7,11 +7,11 @@ from text_anonymizer.recognizers.fi_spacy_address_recognizer import SpacyAddress
 
 
 def build_analyzer(anonymize_full_address: bool):
-    recognizer = SpacyAddressRecognizer(supported_language='fi', anonymize_full_string=anonymize_full_address)
+    recognizer = SpacyAddressRecognizer(anonymize_full_string=anonymize_full_address)
+    # make sure inside SpacyAddressRecognizer you have: self.supported_languages = ["fi"]
 
-    # Init analyzer engine
-    registry = RecognizerRegistry()
-    registry.add_recognizer(recognizer)
+    registry = RecognizerRegistry(recognizers=[recognizer], supported_languages=["fi"])
+
     config_file = "../text_anonymizer/config/languages-config.yml"
     provider = NlpEngineProvider(conf_file=config_file)
     nlp_engine = provider.create_engine()
