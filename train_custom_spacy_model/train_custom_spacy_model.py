@@ -1,9 +1,5 @@
 # NOTE! This script is deprecated and can only be used for copying parts of code for refactoring.
-print("\n\n\n\n\n\n\n\n****************************************************************************")
-print("WARNING: THIS IS DEPRECATED CODE AND SHOULD ONLY BE USED FOR COPYING PARTS OF CODE FOR REFACTORING PURPOSES.")
-print(*"****************************************************************************")
-print("Check for imports to train_custom_spacy_model copy them to the new location.\n\n\n\n\n\n\n\n")
-
+raise DeprecationWarning("This script is deprecated. Use main_train.py instead.")
 
 import csv
 import datetime
