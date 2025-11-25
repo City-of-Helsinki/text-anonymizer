@@ -1,6 +1,3 @@
-# NOTE! This script is deprecated and can only be used for copying parts of code for refactoring.
-raise DeprecationWarning("This script is deprecated. Use main_train.py instead.")
-
 import csv
 import datetime
 import itertools
@@ -10,27 +7,15 @@ import random
 import spacy
 from spacy.training import Example
 from spacy.util import minibatch, compounding
-from model_version import FINETUNED_MODEL_VERSION
+
 from evaluation import evaluate_nlp
 
 print("Starting fine tuning of spacy model for Finnish names, helsinki streets and areas")
 
-# SMALLER, HIGH-QUALITY dataset sizes
-# Observation: 175 area examples worked well - fewer, better samples prevent overfitting
-AREAS_TEST_DATA_SIZE = 150   # Keep small like original successful 175
-STREETS_TEST_DATA_SIZE = 400  # Increased from 200 to better handle streets with personal names
-NAMES_TEST_DATA_SIZE = 200    # Drastically reduced from 900 - quality over quantity
-NEGATIVE_EXAMPLES_SIZE = 500  # Moderate amount of negative examples
+AREAS_TEST_DATA_SIZE = 175
+STREETS_TEST_DATA_SIZE = 500
+NAMES_TEST_DATA_SIZE = 500
 
-# Training configuration
-TRAINING_CONFIG = {
-    'iterations': 10,
-    'dropout': 0.3,            # Higher regularization
-    'learn_rate': 0.001,       # Keep higher rate
-    'patience': 3,             # Stop faster
-    'min_improvement': 0.01,   # 1% improvement required
-    'train_split': 0.8,
-}
 
 exec_ner = True
 exec_test = True
@@ -46,37 +31,37 @@ NAME_ENTITY = 'PERSON'
 
 base_model = "fi_core_news_lg"
 nlp = spacy.load(base_model)
-target_path = f"../custom_spacy_model/{FINETUNED_MODEL_VERSION}"
+target_path = "../custom_spacy_model/fi_datahel_spacy-0.0.3"
 
 this_dir, this_filename = os.path.split(__file__)
-#sentence_resources
+
 _FIRST_NAMES_FILE_PATH = "../test/data/etunimet.csv"
 _FIRST_NAMES_DATA_FILE = os.path.join(this_dir, _FIRST_NAMES_FILE_PATH)
 _FIRST_NAMES = []
-#sentence_resources
+
 _LAST_NAMES_FILE_PATH = "../test/data/sukunimet.csv"
 _LAST_NAMES_DATA_FILE = os.path.join(this_dir, _LAST_NAMES_FILE_PATH)
 _LAST_NAMES = []
-#sentence_resources
+
 _STREETS_FILE_PATH = "../test/data/helsinki_kadunnimet.txt"
 _STREETS_DATA_FILE = os.path.join(this_dir, _STREETS_FILE_PATH)
 _STREETS = []
-#sentence_resources
+
 _AREAS_FILE_PATH = "../test/data/helsinki_alueet.txt"
 _AREAS_DATA_FILE = os.path.join(this_dir, _AREAS_FILE_PATH)
 _AREAS = []
-#sentence_resources
+
 _PRODUCTS_FILE_PATH = "../test/data/tuotenimet.txt"
 _PRODUCTS_DATA_FILE = os.path.join(this_dir, _PRODUCTS_FILE_PATH)
 _PRODUCTS = []
-#sentence_resources
+
 _ORGANIZATIONS_FILE_PATH = "../test/data/organisaatiot.txt"
 _ORGANIZATIONS_DATA_FILE = os.path.join(this_dir, _ORGANIZATIONS_FILE_PATH)
 _ORGANIZATIONS = []
-#sentence_resources
+
 _SKIP_FILE_PATH = "../test/data/ohitettavat.txt"
 _SKIP_DATA_FILE = os.path.join(this_dir, _ORGANIZATIONS_FILE_PATH)
-_SKIP = ['Maisa-järjestelmä']
+_SKIP = []
 
 with open(_LAST_NAMES_DATA_FILE, 'r') as data:
     for line in csv.reader(data, delimiter=';'):
@@ -210,7 +195,7 @@ def build_random_sentence(names: list[str]) -> str:
     s1 = generate_sentence(names[0], EVALUATION_SENTENCES)
     s2 = generate_sentence(names[1], EVALUATION_SENTENCES)
     return s1[0] + " " + s2[0]
-#sentence_resources
+
 def test_areas() -> bool:
     amount = 2
     area1 = random.choice(_AREAS)
@@ -228,7 +213,7 @@ def test_areas() -> bool:
             print("Incorrect: ", ent, ent.label_)
     return correct_label == amount
 
-#sentence_resources
+
 def test_streets() -> bool:
     amount = 2
     street1 = random.choice(_STREETS)
@@ -254,22 +239,7 @@ def run_test(amount=50):
         results1.append(test_areas())
         results1.append(test_streets())
     p = results1.count(True) / (amount * 3) * 100
-
-    # Show test results with clear formatting
-    total_tests = amount * 3
-    passed_tests = results1.count(True)
-    print(f"  Test Coverage: {p:.1f}% ({passed_tests}/{total_tests} tests passed)")
-
-    # Provide interpretation
-    if p >= 90:
-        print(f"  ✅ EXCELLENT test coverage!")
-    elif p >= 75:
-        print(f"  ✅ GOOD test coverage")
-    elif p >= 60:
-        print(f"  ⚠️  ACCEPTABLE test coverage")
-    else:
-        print(f"  ❌ LOW test coverage - model needs improvement")
-
+    print("Test coverage %", p)
     return p
 
 
@@ -280,33 +250,8 @@ def build_patterns(data, label):
         patterns.append({'pattern': s, 'label': label})
     return patterns
 
-
-def validate_entity_boundaries(text, start, end, entity_text):
-    """Ensure entities align correctly with text"""
-    actual_text = text[start:end]
-    if actual_text.strip() != entity_text.strip():
-        print(f"⚠️  Boundary mismatch: '{actual_text}' vs '{entity_text}'")
-        return False
-    return True
-
-
-def augment_street_variations(street, max_variations=2):
-    """Generate diverse variations with different suffixes"""
-    street_suffixes = ['llä', 'lle', 'lta', 'ltä', 'lla', 'n', 'ksi', 'ssa', 'ssä', 'sta', 'stä']
-    # Avoid duplicates if street already has suffix
-    available_suffixes = [s for s in street_suffixes if not street.endswith(s)]
-    num_variations = min(max_variations, len(available_suffixes))
-    if num_variations == 0:
-        return []
-    suffixes = random.sample(available_suffixes, num_variations)
-    return [f"{street}{suffix}" for suffix in suffixes]
-
-#sentence_resources
-ADVERBS = ['hyvin', 'mukavasti', 'tyylikkäästi', 'oudosti', 'pohdiskellen', 'tuttavallisesti',
-           'nopeasti', 'hitaasti', 'iloisesti', 'surullisesti', 'rauhallisesti', 'kiireisesti']
-ADJECTIVES = ['hieno', 'mukava', 'tyylikäs', 'outo', 'pohdiskeleva', 'tuttavallinen', 'kiva',
-              'hauska', 'kummallinen', 'mielenkiintoinen', 'kaunis', 'ruma', 'iso', 'pieni',
-              'vanha', 'uusi', 'kallis', 'halpa']
+ADVERBS = ['hyvin', 'mukavasti', 'tyylikkäästi', 'oudosti', 'pohdiskellen', 'tuttavallisesti']
+ADJECTIVES = ['hieno', 'mukava', 'tyylikäs', 'outo', 'pohdiskeleva', 'tuttavallinen', 'kiva', 'hauska', 'kummallinen', 'mielenkiintoinen', 'kaunis']
 
 
 
@@ -315,7 +260,7 @@ print("Building test data for training")
 print(f"Generating {AREAS_TEST_DATA_SIZE} sentences with areas")
 print(f"Generating {STREETS_TEST_DATA_SIZE} sentences with streets")
 print(f"Generating {NAMES_TEST_DATA_SIZE} sentences with names")
-#sentence_resources
+
 AREA_LIST = random.sample(_AREAS, AREAS_TEST_DATA_SIZE)
 STREET_LIST = random.sample(_STREETS, STREETS_TEST_DATA_SIZE)
 NAME_LIST = generate_full_names(NAMES_TEST_DATA_SIZE)
@@ -665,7 +610,7 @@ SENTENCES_NAME = [
     'Konsultti {s} järjesti onnistuneen yrityksen tiimipäivän, jossa oli tylsää ja opittiin vähän.',
     'Johtaja {s} kritisoi uutta lakia.'
 ]
-#sentence_resources
+
 SENTENCES_STREETS = [
     'Toivotaan energiahuoltoa {s} 6 sähköt roikkuu sähkölinjalla.',
     'Osoitteessa {s} tien puolella on kivi.',
@@ -702,47 +647,6 @@ SENTENCES_STREETS = [
     'Milloin {s} 9:n katukuoppia aiotaan paikata? Ne ovat vaaraksi pyöräilijöille.',
     'Olisi hienoa, jos {s} 19:n koirapuistoon voitaisiin asentaa lisää varjoa tarjoavia puita.',
     'Haluaisin antaa palautetta {s} 7:n varren loistavasta katutaidegalleriasta.',
-    # Additional sentences specifically for streets with personal names
-    'Kadulla {s} sijaitsee vanha puutalo.',
-    'Aukiolla {s} järjestetään toritapahtuma.',
-    'Osoitteessa {s} 24 asuu ystäväni.',
-    'Käänny vasemmalle tieltä {s}.',
-    'Bussipysäkki sijaitsee kadulla {s}.',
-    'Tienvarteen {s} on pysäköity autoja.',
-    'Kulkue kulkee {s} pitkin.',
-    'Asuinalue {s} varrella on rauhallinen.',
-    'Risteys {s} ja Mannerheimintie.',
-    'Talon osoite on {s} 46.',
-    'Asun osoitteessa {s} 98 H 22.',
-    'Postilaatikko kadulla {s} on täynnä.',
-    'Pyöräparkkia {s} varrella ei ole tarpeeksi.',
-    'Suojatie {s} kohdalla on huonosti valaistu.',
-    'Leikkipuisto {s} 42 on lasten suosikki.',
-    'Raitiovaunupysäkki {s} varrella tarvitsee katoksen.',
-    'Kadun {s} 74 päässä on tietyö.',
-    'Metroasema {s} 69 palvelee monia matkustajia.',
-    'Kävelyreitti {s} 67 G 33 on suosittu.',
-    'Alueella {s} 4 tarvitaan lisää valaistusta.',
-    'Osoite {s} 90 on helppo löytää.',
-    'Julkisivu {s} 45 F 25 tarvitsee maalausta.',
-    'Taloyhtiön osoite on {s} 38.',
-    'Työmaa {s} 69 H 4 aiheuttaa viivytyksiä.',
-    'Toimisto sijaitsee osoitteessa {s} 1 G 47.',
-    'Ravintola {s} 93 on suosittu.',
-    'Kauppa {s} 13 on avoinna arkisin.',
-    'Päiväkoti {s} 16 ottaa vastaan uusia lapsia.',
-    'Kirjasto {s} 72 on remontoitu.',
-    'Kerhotalo {s} 21 G 27 järjestää tapahtumia.',
-    'Puisto {s} 2 on kaunis keväällä.',
-    'Urheilukenttä {s} 90 on varattu lauantaille.',
-    'Aukio {s} on kiva kohtauspaikka.',
-    'Silta {s} ylittää joen.',
-    'Ranta {s} on suosittu kesäisin.',
-    'Tori {s} on vilkas aamuisin.',
-    'Polku {s} kulkee metsän läpi.',
-    'Tie {s} johtaa keskustaan.',
-    'Kuja {s} on kapea ja kaunis.',
-    'Raitti {s} on jalankulkijoille.',
     'Voisiko {s} 27:n risteysalueelle saada lisävalaistusta?',
     'Pysäköintikiellot {s} 13:ssa ovat epäselviä ja aiheuttavat sekaannusta.',
     'Olen iloinen siitä, että {s} 29:n katualue on saanut uutta asfalttia.',
@@ -773,7 +677,7 @@ SENTENCES_STREETS = [
     'Olisiko {s} 44:ään mahdollista saada lisää katuvalaisimia, varsinkin talvikuukausina?',
     'Kiitos, että {s} 30:n alueen puistot ovat pidetty siistinä ja turvallisina.',
 ]
-#sentence_resources
+
 SENTENCES_AREAS = [
     '{s} alueen kehittäminen pitäisi olla etusijalla.',
     '{s} nauttii taas kesäisestä auringosta.',
@@ -838,7 +742,7 @@ SENTENCES_AREAS = [
     'Onko suunnitteilla, että {s} alueen kouluihin tulisi lisää iltapäiväkerhotoimintaa?',
     'Olisi kiva, jos {s} asukkaille järjestettäisiin enemmän yhteisiä siivoustalkoita.'
 ]
-#sentence_resources
+
 EVALUATION_SENTENCES = [
     # Name evaluation sentences - 25
     'Haluaisin kiittää {s} hänen nopeasta toiminnastaan, kun hän huolehti kaatuneen puun poistamisesta tieltämme, mikä paransi merkittävästi alueemme turvallisuutta. ',
@@ -945,7 +849,7 @@ EVALUATION_SENTENCES = [
     'Viikonloppuna voi rentoutua.',
     'Keskiviikkona on usein puoliväli viikosta.',
 ]
-#sentence_resources
+
 EVALUATION_VALUES = [
     # Names - 25 examples for better coverage
     'Martti',
@@ -1052,7 +956,7 @@ EVALUATION_VALUES = [
     None,
     None,
 ]
-#sentence_resources
+
 EVALUATION_LABELS = [
     # Names - 25
     NAME_ENTITY,
@@ -1199,11 +1103,12 @@ for s in STREET_LIST:
     example: Example = Example.from_dict(doc, {"text": sentence, "entities": entities})
     TRAIN_DATA.append(example)
 
-    # Add LIMITED variations with Finnish case suffixes - only for single-word streets
-    # Reduced from creating 3x to only 1-2 variations per street
-    if not ' ' in s and random.random() < 0.3:  # Only 30% of streets get variations
-        variations = augment_street_variations(s, max_variations=1)
-        for s_var in variations:
+    # Add variations with Finnish case suffixes for compound street names without spaces
+    if not ' ' in s and len(TRAIN_DATA) < (len(NAME_LIST) + len(STREET_LIST) * 3 + len(AREA_LIST)):
+        # Add one suffix variation to increase training data diversity
+        suffix = random.choice(street_suffixes)
+        if not s.endswith(suffix):
+            s_var = s + suffix
             sentence_var, start_var, end_var = generate_sentence(s_var, SENTENCES_STREETS[:5])
             doc_var = nlp(sentence_var)
             entities_var = [[start_var, end_var, STREET_ENTITY]]
@@ -1218,288 +1123,13 @@ for s in AREA_LIST:
     TRAIN_DATA.append(example)
 
 
-
-# ============================================================================
-# MIXED CONTEXT EXAMPLES - CRITICAL for recognizing multiple entities
-# ============================================================================
-print("\n" + "="*80)
-print("🔀 Generating MIXED CONTEXT examples (PERSON + STREET/AREA)")
-print("="*80)
-#sentence_resources
-# Define mixed context patterns - SIMPLIFIED to most effective patterns
-# Focus on patterns that directly match real test data scenarios
-MIXED_PATTERNS_PERSON_STREET = [
-    # Most common pattern from test data
-    "Palautteessa mainitaan, että tunnettu kuvataiteilija {name} asui osoitteessa {street} {number}.",
-    "{name} kertoi että kauppa sijaitsi ennen osoitteessa {street} {number}.",
-    "Talonmiehenä pidetty {name} on toiminut osoitteessa {street} {number} jo kahdentoista vuoden ajan.",
-    # Secondary patterns
-    "{name} mainitsi että {street} {number} rakennus on historiallinen.",
-    "{name} huomautti että {street} valaistus kaipaa korjausta.",
-    "{name} valittaa että {street} kunto on huono.",
-    "{name} toivoo että {street} saisi lisää puita.",
-    "{name} sanoo että {street} {number} bussipysäkki tarvitsee katoksen.",
-]
-#sentence_resources
-MIXED_PATTERNS_PERSON_AREA = [
-    "{name} kertoi että {area} alue kaipaa investointeja.",
-    "{name} mainitsi että {area} puisto on kaunis.",
-    "{name} valittaa että {area} liikenneyhteydet ovat huonot.",
-    "{name} kiittää että {area} palvelut ovat parantuneet.",
-    "{name} ehdottaa että {area} tarvitsee lisää valaistusta.",
-    "{name} huomauttaa että {area} turvallisuus on parantunut.",
-    "{name} sanoo että {area} on mukava asuinalue.",
-    "Asukas {name} mainitsee että {area} kehittyy nopeasti.",
-]
-#sentence_resources
-MIXED_PATTERNS_PERSON_STREET_AREA = [
-    "{name} kertoi että {area}ssa {street} {number} kauppa suljetaan.",
-    "{name} mainitsi että {area} alueella {street} tarvitsee korjausta.",
-    "{name} huomautti että {area}n {street} {number} kohdalla on ongelma.",
-    "{name} sanoo että {area}ssa {street} puisto on hieno.",
-]
-#sentence_resources
-# Additional realistic patterns for varied contexts - ONLY patterns with nominative case
-MIXED_PATTERNS_PERSON_STREET_EXTENDED = [
-    "Vaikka {street} kentällä olisi jäätä {name} tulee aina katsomaan onko pelaajia.",
-    "{name} muistaa kun {street} {number} vieressä oli vielä vanha koulu.",
-    "{name} kertoo että {street} {number} kohdalla oli ennen kauppa.",
-    "{name} toivoo että {street} {number} vanha puu säilytetään.",
-    "{name} on aina ihaillut {street} {number} rakennuksen arkkitehtuuria.",
-    "Ennen {street} {number} tontilla oli puutarha, kertoo {name}.",
-    "{name} muistelee että {street} oli hänen koulutiensä.",
-    "{name} totesi että {street} historiaa pitäisi vaalia.",
-    "{name} kirjoitti että {street} {number} on historiallinen.",
-    "{name} ehdotti että {street} {number} kunnostetaan.",
-]
-
-# Generate PERSON + STREET examples (300 examples - increased from 150)
-# Focus on quantity for this critical pattern
-mixed_person_street_count = 0
-mixed_person_street_skipped = 0
-
-for _ in range(500):  # Generate more to account for skipped examples
-    name = random.choice(NAME_LIST)
-    street = random.choice(STREET_LIST)
-    number = random.randint(1, 150)
-
-    # Choose from realistic feedback patterns
-    all_patterns = MIXED_PATTERNS_PERSON_STREET + MIXED_PATTERNS_PERSON_STREET_EXTENDED
-    pattern = random.choice(all_patterns)
-
-    # Generate text
-    text = pattern.format(name=name, street=street.lower(), number=number)
-
-    # Find PERSON entity - must match exactly
-    name_start = text.find(name)
-    if name_start == -1:
-        mixed_person_street_skipped += 1
-        continue
-    name_end = name_start + len(name)
-
-    # Verify the name is not modified (no case endings)
-    actual_name = text[name_start:name_end]
-    if actual_name != name:
-        mixed_person_street_skipped += 1
-        continue
-
-    # Find STREET entity (LOC)
-    street_lower = street.lower()
-    street_start = text.find(street_lower)
-    if street_start == -1:
-        mixed_person_street_skipped += 1
-        continue
-    street_end = street_start + len(street_lower)
-
-    # Verify the street is not modified
-    actual_street = text[street_start:street_end]
-    if actual_street != street_lower:
-        mixed_person_street_skipped += 1
-        continue
-
-    # Create entities list (order matters - earlier position first)
-    entities = []
-    if name_start < street_start:
-        entities = [
-            [name_start, name_end, NAME_ENTITY],
-            [street_start, street_end, STREET_ENTITY]
-        ]
-    else:
-        entities = [
-            [street_start, street_end, STREET_ENTITY],
-            [name_start, name_end, NAME_ENTITY]
-        ]
-
-    # Validate no overlap and proper token boundaries
-    if name_end <= street_start or street_end <= name_start:
-        doc = nlp(text)
-        # Double-check alignment with spaCy's tokenizer
-        try:
-            example = Example.from_dict(doc, {"entities": entities})
-            TRAIN_DATA.append(example)
-            mixed_person_street_count += 1
-
-            # Stop when we have enough valid examples
-            if mixed_person_street_count >= 300:
-                break
-        except Exception as e:
-            mixed_person_street_skipped += 1
-            continue
-
-print(f"  ✅ Added {mixed_person_street_count} PERSON + STREET examples (skipped {mixed_person_street_skipped} misaligned)")
-
-# Generate PERSON + AREA examples (100 examples - reduced from 300)
-mixed_person_area_count = 0
-mixed_person_area_skipped = 0
-
-for _ in range(150):  # Generate more to account for skipped
-    name = random.choice(NAME_LIST)
-    area = random.choice(AREA_LIST)
-    pattern = random.choice(MIXED_PATTERNS_PERSON_AREA)
-
-    # Generate text
-    text = pattern.format(name=name, area=area.lower())
-
-    # Find PERSON entity - must match exactly
-    name_start = text.find(name)
-    if name_start == -1:
-        mixed_person_area_skipped += 1
-        continue
-    name_end = name_start + len(name)
-
-    # Verify the name is not modified
-    actual_name = text[name_start:name_end]
-    if actual_name != name:
-        mixed_person_area_skipped += 1
-        continue
-
-    # Find AREA entity (GPE)
-    area_lower = area.lower()
-    area_start = text.find(area_lower)
-    if area_start == -1:
-        mixed_person_area_skipped += 1
-        continue
-    area_end = area_start + len(area_lower)
-
-    # Verify the area is not modified
-    actual_area = text[area_start:area_end]
-    if actual_area != area_lower:
-        mixed_person_area_skipped += 1
-        continue
-
-    # Create entities list (order matters - earlier position first)
-    entities = []
-    if name_start < area_start:
-        entities = [
-            [name_start, name_end, NAME_ENTITY],
-            [area_start, area_end, AREA_ENTITY]
-        ]
-    else:
-        entities = [
-            [area_start, area_end, AREA_ENTITY],
-            [name_start, name_end, NAME_ENTITY]
-        ]
-
-    # Validate no overlap
-    if name_end <= area_start or area_end <= name_start:
-        doc = nlp(text)
-        try:
-            example = Example.from_dict(doc, {"entities": entities})
-            TRAIN_DATA.append(example)
-            mixed_person_area_count += 1
-
-            # Stop when we have enough valid examples
-            if mixed_person_area_count >= 100:
-                break
-        except Exception as e:
-            mixed_person_area_skipped += 1
-            continue
-
-print(f"  ✅ Added {mixed_person_area_count} PERSON + AREA examples (skipped {mixed_person_area_skipped} misaligned)")
-
-# Generate PERSON + STREET + AREA examples (50 examples - reduced from 100)
-mixed_triple_count = 0
-mixed_triple_skipped = 0
-
-for _ in range(80):  # Generate more to account for skipped
-    name = random.choice(NAME_LIST)
-    street = random.choice(STREET_LIST)
-    area = random.choice(AREA_LIST)
-    number = random.randint(1, 150)
-    pattern = random.choice(MIXED_PATTERNS_PERSON_STREET_AREA)
-
-    # Generate text
-    text = pattern.format(name=name, street=street.lower(), area=area.lower(), number=number)
-
-    # Find entities - all must match exactly
-    name_start = text.find(name)
-    street_lower = street.lower()
-    street_start = text.find(street_lower)
-    area_lower = area.lower()
-    area_start = text.find(area_lower)
-
-    if name_start == -1 or street_start == -1 or area_start == -1:
-        mixed_triple_skipped += 1
-        continue
-
-    name_end = name_start + len(name)
-    street_end = street_start + len(street_lower)
-    area_end = area_start + len(area_lower)
-
-    # Verify all entities are not modified
-    if (text[name_start:name_end] != name or
-        text[street_start:street_end] != street_lower or
-        text[area_start:area_end] != area_lower):
-        mixed_triple_skipped += 1
-        continue
-
-    # Create sorted entities list
-    entity_list = [
-        (name_start, name_end, NAME_ENTITY),
-        (street_start, street_end, STREET_ENTITY),
-        (area_start, area_end, AREA_ENTITY)
-    ]
-    entity_list.sort(key=lambda x: x[0])  # Sort by start position
-
-    # Validate no overlaps
-    valid = True
-    for i in range(len(entity_list) - 1):
-        if entity_list[i][1] > entity_list[i+1][0]:
-            valid = False
-            break
-
-    if valid:
-        # Convert to list format
-        entities = [[e[0], e[1], e[2]] for e in entity_list]
-        doc = nlp(text)
-
-        try:
-            example = Example.from_dict(doc, {"entities": entities})
-            TRAIN_DATA.append(example)
-            mixed_triple_count += 1
-
-            # Stop when we have enough valid examples
-            if mixed_triple_count >= 50:
-                break
-        except Exception as e:
-            mixed_triple_skipped += 1
-            continue
-    else:
-        mixed_triple_skipped += 1
-
-print(f"  ✅ Added {mixed_triple_count} PERSON + STREET + AREA examples (skipped {mixed_triple_skipped} misaligned)")
-print(f"  📊 Total mixed context examples: {mixed_person_street_count + mixed_person_area_count + mixed_triple_count}")
-print("="*80 + "\n")
-#sentence_resources
 # Add here example sentences that are used to teach not anonymizable sentences
-# SIGNIFICANTLY EXPANDED: 500+ negative examples to balance the training data
 FALSE_POSITIVES = [
-    # Original examples
-    'Aura on naisen nimi mutta tässä yhteydessä viittaan kalustoon joka poistaa lunta kadulta.',
-    'Maunulan Majalla maistuu mehu ja pulla',
-    'Kruunuhaan Meritullintiellä autot ovat siististi parkissa',
-    'Viikissä Mannerheimintiellä on katutyö',
-    'Malmilla Kissantiellä kaikki hyvin',
+    'Aura on naisen nimi mutta tässä yhteydessä viittaan kalustoon joka poistaa lunta kadulta.'
+    'Maunulan Majalla maistuu mehu ja pulla'
+    'Kruunuhaan Meritullintiellä autot ovat siististi parkissa'
+    'Viikissä Mannerheimintiellä on katutyö'
+    'Malmilla Kissantiellä kaikki hyvin'
     'Vaaditaan ed. mainittujen katujen lakaisua, etenkin Einarinkuja',
     'Flöitti dianan kujan bussipysäkillä on lasinsiruja',
     'Kekkolan tien risteyksessä on siili',
@@ -1511,8 +1141,8 @@ FALSE_POSITIVES = [
     'Mahtilan Koulu',
     'Aura ajoi seinääni.',
     'Aura-auton kuski käyttää sinistä hattua',
-    'Vaaditaan ed. mainittujen katujen aurausta!',
-    'Ala-asteen pihassa on upea PUU',
+    'Vaaditaan ed. mainittujen katujen aurausta! '
+    'Ala-asteen pihassa on upea PUU'
     'Minusta tontti 38161/3 on kaunis.',
     'EU-kansalaisen kotimaa on eu-alueella.',
     'Helsingfors eli Helsinki, kuten täällä pää-hesassa sanomme.',
@@ -1539,479 +1169,6 @@ FALSE_POSITIVES = [
     'Syksy on kaunis vuodenaika.',
     'Aurinko paistaa kirkkaasti.',
     'Jaspi, Valkea Kuulas ja Collina ovat omenalajikeita.',
-    # Weather and seasons (50 examples)
-    'Sää on tänään pilvinen ja viileä.',
-    'Huomenna satanut lumi sulaa pois.',
-    'Syksyisin lehdet putoavat maahan.',
-    'Kevät tuo tullessaan uuden alkuun.',
-    'Talvella on pimeää ja kylmää.',
-    'Kesäisin ilma on lämmin ja kostea.',
-    'Sade piisaa ikkunaan tasaisesti.',
-    'Tuuli puhaltaa kovasti ulkona.',
-    'Pakkanen kiristää ilmaa.',
-    'Lämpötila nousee päivän aikana.',
-    'Ilmankosteus on korkea tänään.',
-    'Ukkonen jyrisee kaukaisuudessa.',
-    'Salamat välkkyvät taivaalla.',
-    'Sumu peittää näkyvyyden.',
-    'Räntä sataa tihkuna.',
-    'Jää peittää kadut.',
-    'Lumi kertuu kasoihin.',
-    'Aurinko paistaa kirkkaasti taivaalla.',
-    'Pilvet liikkuvat hitaasti.',
-    'Ilma on raikas ja puhdas.',
-    'Kosteus tuntuu iholla.',
-    'Lämpimät tuulet puhaltavat etelästä.',
-    'Yöpakkanen kovettaa maan.',
-    'Aamukaste kiiltelee ruoholla.',
-    'Ilta-aurinko laskee horisonttiin.',
-    'Tähtitaivas on kirkas yöllä.',
-    'Kuutamo valaisee pihaa.',
-    'Hämärä laskeutuu hitaasti.',
-    'Aamunkoitto alkaa varhain.',
-    'Iltahämärä pidentää varjoja.',
-    'Päivä on pitkä kesällä.',
-    'Yö on pitkä talvella.',
-    'Vuodenajat vaihtuvat säännöllisesti.',
-    'Sääennuste lupaa sadetta.',
-    'Tuulennopeus on kohtalainen.',
-    'Ilmanpaine laskee hitaasti.',
-    'Lämpötilan vaihtelu on suurta.',
-    'Kostea ilma tuntuu raskaalta.',
-    'Kuiva ilma raapii kurkkua.',
-    'Tuulenpuuska heiluttaa puita.',
-    'Lumihiutaleet leijailelevat ilmassa.',
-    'Jäätikkö sulaa hitaasti.',
-    'Routa lähtee maasta keväällä.',
-    'Helle piinaa kesäpäivinä.',
-    'Viima viilentää kesäyötä.',
-    'Ilmasto muuttuu hitaasti.',
-    'Säätila vaihtelee päivittäin.',
-    'Lämpöaalto jatkuu viikon.',
-    'Kylmä ilma virtaa pohjoisesta.',
-    'Matalapaine tuo sadetta.',
-    # Time expressions (50 examples)
-    'Kello on nyt täsmälleen kolme.',
-    'Aika kuluu nopeasti.',
-    'Hetki sitten oli vielä aamupäivä.',
-    'Juuri nyt on paras hetki.',
-    'Myöhemmin illalla tapaamme.',
-    'Aikaisemmin tänään satoi.',
-    'Pian on aika syödä.',
-    'Kohta alkaa elokuva.',
-    'Hetken kuluttua olemme perillä.',
-    'Tuokion päästä jatketaan.',
-    'Jonkin ajan kuluttua palataan.',
-    'Vuorokausi on 24 tuntia.',
-    'Tunti on 60 minuuttia.',
-    'Minuutti on 60 sekuntia.',
-    'Viikko on seitsemän päivää.',
-    'Kuukausi on noin 30 päivää.',
-    'Vuosi on 12 kuukautta.',
-    'Vuosikymmen on kymmenen vuotta.',
-    'Vuosisata on sata vuotta.',
-    'Vuosituhat on tuhat vuotta.',
-    'Maanantai on viikon ensimmäinen päivä.',
-    'Tiistai seuraa maanantaita.',
-    'Keskiviikko on viikon puoliväli.',
-    'Torstai edeltää perjantaita.',
-    'Perjantai on viikon viimeinen työpäivä.',
-    'Lauantai on viikonloppua.',
-    'Sunnuntai on lepopäivä.',
-    'Tammikuu on vuoden ensimmäinen kuukausi.',
-    'Helmikuu on lyhin kuukausi.',
-    'Maaliskuu tuo kevään.',
-    'Huhtikuu on epävakaa.',
-    'Toukokuu on kaunis kuukausi.',
-    'Kesäkuu on kesän alkua.',
-    'Heinäkuu on lomakuukausi.',
-    'Elokuu on kesän loppua.',
-    'Syyskuu tuo syksyn.',
-    'Lokakuu on sateinen.',
-    'Marraskuu on pimeä kuukausi.',
-    'Joulukuu on juhlavuoden loppu.',
-    'Aamuyö on hiljainen hetki.',
-    'Aamupäivä alkaa aikaisin.',
-    'Keskipäivä on lounasaikaa.',
-    'Iltapäivä kuluu nopeasti.',
-    'Ilta tuo lepoa.',
-    'Yö on pimeä ja hiljainen.',
-    'Keskiyö on vuorokauden puoliväli.',
-    'Aamuhetki on rauhoittava.',
-    'Iltahämärä on kaunista aikaa.',
-    'Päivänvalo vähenee syksyllä.',
-    'Pimeys lisääntyy talvella.',
-    # Numbers and measurements (50 examples)
-    'Numero yksi on pienin positiivinen kokonaisluku.',
-    'Kaksi plus kaksi on neljä.',
-    'Kolme kertaa kolme on yhdeksän.',
-    'Neljä on parillinen luku.',
-    'Viisi on pariton luku.',
-    'Kuusi jaettuna kahdella on kolme.',
-    'Seitsemän on alkuluku.',
-    'Kahdeksan on kahden kolmas potenssi.',
-    'Yhdeksän on kolmen neliö.',
-    'Kymmenen on pyöreä luku.',
-    'Sata on kymmenen kertaa kymmenen.',
-    'Tuhat on suuri luku.',
-    'Miljoona on valtava määrä.',
-    'Miljardi on käsittämätön summa.',
-    'Prosentti on sadasosa.',
-    'Puolet on 50 prosenttia.',
-    'Kolmasosa on noin 33 prosenttia.',
-    'Neljäsosa on 25 prosenttia.',
-    'Kymmenesosa on 10 prosenttia.',
-    'Metri on pituuden yksikkö.',
-    'Senttimetri on sadas metri.',
-    'Kilometri on tuhat metriä.',
-    'Millimetri on tuhannesosa metriä.',
-    'Gramma on massan yksikkö.',
-    'Kilogramma on tuhat grammaa.',
-    'Tonni on tuhat kilogrammaa.',
-    'Litra on tilavuuden yksikkö.',
-    'Millilitra on tuhannesosa litrasta.',
-    'Desilitra on kymmenesosa litrasta.',
-    'Sekunti on ajan yksikkö.',
-    'Neliömetri on pinta-alan yksikkö.',
-    'Kuutiometri on tilavuuden yksikkö.',
-    'Aste on lämpötilan yksikkö.',
-    'Celsius on lämpötila-asteikko.',
-    'Kelvin on absoluuttinen lämpötila.',
-    'Joule on energian yksikkö.',
-    'Watti on tehon yksikkö.',
-    'Voltit mittaavat jännitettä.',
-    'Ampeeri on virran yksikkö.',
-    'Hevosvoima on vanhanaikainen tehoyksikkö.',
-    'Pascal on paineen yksikkö.',
-    'Baari on paineen yksikkö.',
-    'Hertz on taajuuden yksikkö.',
-    'Decimaali on kymmenjärjestelmää.',
-    'Binäärinen on kaksijärjestelmä.',
-    'Heksadesimaalinen on kuusitoistajärjestelmä.',
-    'Okaalinen on kahdeksanjärjestelmä.',
-    'Plus merkitsee yhteenlaskua.',
-    'Miinus merkitsee vähennyslaskua.',
-    'Kertomerkki on matematiikan symboli.',
-    # Colors and descriptions (50 examples)
-    'Punainen on lämmin väri.',
-    'Sininen on viileä väri.',
-    'Keltainen on kirkas väri.',
-    'Vihreä on luonnonväri.',
-    'Oranssi on sekoitusväri.',
-    'Violetti on tumma väri.',
-    'Valkoinen on kaikkien värien summa.',
-    'Musta on värien poissaolo.',
-    'Harmaa on neutraali väri.',
-    'Ruskea on maaläheinen väri.',
-    'Pinkki on vaalean punainen.',
-    'Turkoosi on sinivihreä.',
-    'Liila on vaalean violetti.',
-    'Beige on vaalean ruskea.',
-    'Kulta on metallinen väri.',
-    'Hopea on kiiltävä väri.',
-    'Pronssi on tumman kulta.',
-    'Iso on suuren kokoinen.',
-    'Pieni on vähäisen kokoinen.',
-    'Suuri on laajuudeltaan merkittävä.',
-    'Vähäinen on määrältään niukka.',
-    'Korkea ulottuu ylöspäin.',
-    'Matala on lähellä maata.',
-    'Pitkä on etäisyydeltään suuri.',
-    'Lyhyt on kestoltaan vähäinen.',
-    'Leveä on laajuudeltaan runsas.',
-    'Kapea on ahtaan oloinen.',
-    'Syvä menee pitkälle alaspäin.',
-    'Matala on vähäisen syvyinen.',
-    'Paksu on vahvuudeltaan runsas.',
-    'Ohut on heiveröinen.',
-    'Raskas on painava.',
-    'Kevyt on helpon tuntuinen.',
-    'Nopea liikkuu vauhdikkaasti.',
-    'Hidas etenee verkkaisesti.',
-    'Äänekäs on kovaääninen.',
-    'Hiljainen on hiljaa oleva.',
-    'Kirkas on valoisuudeltaan voimakas.',
-    'Tumma on valaistumaton.',
-    'Kiiltävä heijastaa valoa.',
-    'Himmeä on vaimentuneen oloinen.',
-    'Sileä on tasainen pinnaltaan.',
-    'Karkea on rosoisuudeltaan epätasainen.',
-    'Pehmeä on kosketukseltaan miellyttävä.',
-    'Kova on tiukka.',
-    'Jäykkä on taipumaton.',
-    'Notkeä on liikkuvainen.',
-    'Elastinen on venyvä.',
-    'Hauras on helposti rikkoutuva.',
-    'Vahva kestää rasitusta.',
-    # Animals and nature (50 examples)
-    'Koira on ihmisen paras ystävä.',
-    'Kissa on itsenäinen eläin.',
-    'Lintu laulaa aamuisin.',
-    'Kala ui vedessä.',
-    'Hevonen laukkaa nopeasti.',
-    'Lehmä antaa maitoa.',
-    'Sika röhkii kotelossa.',
-    'Lammas on villan lähde.',
-    'Vuohi kiipeää kallioilla.',
-    'Kana munii munia.',
-    'Kukko kiekuu aamulla.',
-    'Ankka ui lammessa.',
-    'Hanhi vaeltaa laumoissa.',
-    'Joutsen on kaunis lintu.',
-    'Pöllö metsästää yöllä.',
-    'Kotka lentää korkealla.',
-    'Varis on älykäs lintu.',
-    'Harakka on kiiltävän musta.',
-    'Punarinta laulaa makeasti.',
-    'Peippo on kevään merkki.',
-    'Pääskynen saapuu keväällä.',
-    'Kurki lähtee muuttolle syksyllä.',
-    'Karhu nukkuu talviunta.',
-    'Susi ulvoo kuutamossa.',
-    'Kettu on ovela eläin.',
-    'Jänis hyppii kepeästi.',
-    'Orava kerää pähkinöitä.',
-    'Hirvi on majestuosa eläin.',
-    'Peura on arkaluontoinen.',
-    'Ilves on Suomen suurpeto.',
-    'Siili on piikkien peitossa.',
-    'Myyrä kaivaa maahan.',
-    'Hiiri on pieni jyrsijä.',
-    'Rotta elää kaupungeissa.',
-    'Lepakko lentää yöllä.',
-    'Sammakoiden kuoro kajahtaa.',
-    'Konna hyppii vedessä.',
-    'Käärme liukuu maassa.',
-    'Lisko ottaa aurinkoa.',
-    'Mehiläinen kerää hunajaa.',
-    'Kimalainen kukkii kesällä.',
-    'Perhonen on väriltään kaunis.',
-    'Sudenkorento lentää nopeasti.',
-    'Hyttynen pistää ihoa.',
-    'Kärpänen surrataan ympäriinsä.',
-    'Hämähäkki kutoo verkkoa.',
-    'Muurahainen on ahkera työntekijä.',
-    'Kärpässieniä on sienimetsässä.',
-    'Kantarelli on keltainen sieni.',
-    'Mustikka kasvaa kangasmaalla.',
-    # Food and drinks (50 examples)
-    'Leipä on päivittäistä ruokaa.',
-    'Maito on terveellistä juotavaa.',
-    'Kahvi on aamun piristäjä.',
-    'Tee on rentouttava juoma.',
-    'Vesi on elämän edellytys.',
-    'Mehu on hedelmistä tehty.',
-    'Limu on virvoitusjuoma.',
-    'Olut on humalasta valmistettu.',
-    'Viini on rypäleistä tehty.',
-    'Juusto on maidosta valmistettu.',
-    'Voi on rasvaa.',
-    'Margariini on kasviöljyä.',
-    'Kananmuna on proteiinin lähde.',
-    'Liha on eläinperäistä ravintoa.',
-    'Kala on terveellistä proteiinia.',
-    'Peruna on juurikas.',
-    'Porkkana on oranssi juures.',
-    'Sipuli maustaa ruokaa.',
-    'Valkosipuli on voimakas mauste.',
-    'Tomaatti on hedelmä.',
-    'Kurkku on vihanneksia.',
-    'Paprika on väriltään kirkas.',
-    'Salaatti on vihreää.',
-    'Kaali on keittiövihanneksia.',
-    'Parsakaali on terveellistä.',
-    'Kukkakaali on valkoinen.',
-    'Pinaatti on rautapitoista.',
-    'Omena on suosittu hedelmä.',
-    'Päärynä on makeaa.',
-    'Banaani on keltainen hedelmä.',
-    'Appelsiini on C-vitamiinia.',
-    'Mandariini on pieni sitrushedelmä.',
-    'Sitruuna on hapanta.',
-    'Lime on vihreä sitrushedelmä.',
-    'Greippi on karvas hedelmä.',
-    'Kiivi on karvainen hedelmä.',
-    'Mango on trooppinen hedelmä.',
-    'Ananas on piikikäs hedelmä.',
-    'Vesimeloni on virkistävä.',
-    'Meloni on makea hedelmä.',
-    'Mansikka on kesän herkku.',
-    'Vadelma on pehmeä marja.',
-    'Mustikka on sininen marja.',
-    'Puolukka on karvasta marjaa.',
-    'Karpalo on hapanta.',
-    'Tyrni on C-vitamiinia.',
-    'Riisi on viljatuote.',
-    'Pasta on italialaiseen keittiöön kuuluva.',
-    'Pizza on suosittu ruokalaji.',
-    'Hampurilainen on pikaruokaa.',
-    # Activities and verbs (50 examples)
-    'Käveleminen on terveellistä liikuntaa.',
-    'Juokseminen vahvistaa kuntoa.',
-    'Pyöräily on ympäristöystävällistä.',
-    'Uinti on koko kehon liikuntaa.',
-    'Hiihto on talvilajien kuningatar.',
-    'Luistelu on taitolaji.',
-    'Rullaluistelu on kesäaktiviteetti.',
-    'Laskettelu on jännittävää.',
-    'Lumilautailu on nuorten laji.',
-    'Kiipeily vaatii voimaa.',
-    'Vaellus on rauhallista liikuntaa.',
-    'Melonta on vesiurheilua.',
-    'Soutu kehittää lihaksistoa.',
-    'Kalastus on harrastus.',
-    'Metsästys on perinteistä.',
-    'Marjastus on kesäpuuhaa.',
-    'Sienestys on syysharrastus.',
-    'Puutarhanhoito on rentouttavaa.',
-    'Lukeminen avartaa mieltä.',
-    'Kirjoittaminen on ilmaisua.',
-    'Piirtäminen on taidetta.',
-    'Maalaaminen vaatii kärsivällisyyttä.',
-    'Veistäminen on käsityötaitoa.',
-    'Valokuvaus tallentaa hetkiä.',
-    'Musisointi on luovaa toimintaa.',
-    'Laulaminen on ilon ilmaisua.',
-    'Tanssiminen on rytmistä liikettä.',
-    'Näytteleminen vaatii rohkeutta.',
-    'Ruoanlaitto on jokapäiväistä.',
-    'Leipominen tuottaa herkkuja.',
-    'Grillaus on kesän iloa.',
-    'Paistaminen on perusruoanlaittoa.',
-    'Keittäminen on vanhin menetelmä.',
-    'Uunissa paistaminen on helppoa.',
-    'Mikrossa lämmittäminen on nopeaa.',
-    'Siivous pitää kodin puhtaana.',
-    'Pyykinpesu on välttämätöntä.',
-    'Tiskaus on päivittäistä puuhaa.',
-    'Imurointi poistaa pölyn.',
-    'Pyyhkiminen siistii pinnat.',
-    'Järjestäminen luo tilaa.',
-    'Korjaus pidentää esineen ikää.',
-    'Rakentaminen luo uutta.',
-    'Maalaus uudistaa pintoja.',
-    'Tapettaminen muuttaa ilmettä.',
-    'Kiillotus tuo loistoa.',
-    'Puhdistus poistaa lian.',
-    'Huoltaminen pitää toimintakuntoisena.',
-    'Säätäminen optimoi toiminnan.',
-    'Testaaminen varmistaa laadun.',
-    # Abstract concepts (50 examples)
-    'Rakkaus on voimakas tunne.',
-    'Viha on tuhoisaa.',
-    'Ilo on elämän suola.',
-    'Suru on luonnollinen reaktio.',
-    'Pelko suojelee vaaroilta.',
-    'Rohkeus voittaa pelon.',
-    'Toivo pitää elossa.',
-    'Epätoivo on synkkää.',
-    'Luottamus rakentaa suhteita.',
-    'Epäluulo hajottaa yhteyttä.',
-    'Kateeus on myrkkyä.',
-    'Ylpeys voi olla hyvästä.',
-    'Nöyryys on hyve.',
-    'Ahneus johtaa tuhoon.',
-    'Anteliaisuus rikastuttaa.',
-    'Kiitollisuus lisää onnellisuutta.',
-    'Katkeruus syö sisältä.',
-    'Surulle pitää antaa tilaa.',
-    'Ilolla on tarttuva vaikutus.',
-    'Rauhassa on voimaa.',
-    'Kiire stressaa.',
-    'Rentoutuminen on tärkeää.',
-    'Stressi haittaa terveyttä.',
-    'Hyvinvointi on kokonaisvaltaista.',
-    'Terveys on rikkaus.',
-    'Sairaus opettaa arvostamaan.',
-    'Kipu on varoitusmerkki.',
-    'Paraneminen vie aikaa.',
-    'Toipuminen vaatii lepoa.',
-    'Lepo uudistaa voimia.',
-    'Uni on tärkeää.',
-    'Väsymys hidastaa.',
-    'Energia on voimavara.',
-    'Motivaatio vie eteenpäin.',
-    'Tahtotila määrää suunnan.',
-    'Päämäärä ohjaa toimintaa.',
-    'Tavoite kannustaa.',
-    'Unelma innoittaa.',
-    'Haave antaa toivoa.',
-    'Todellisuus on kovaa.',
-    'Mielikuvitus on rajaton.',
-    'Luovuus rikkoo rajoja.',
-    'Innovaatio vie eteenpäin.',
-    'Kehitys on jatkuvaa.',
-    'Muutos on väistämätöntä.',
-    'Pysyvyys on harvinaista.',
-    'Katoavaisuus on luonnollista.',
-    'Ikuisuus on käsittämätöntä.',
-    'Hetki on arvokas.',
-    'Nykyisyys on ainoa varma.',
-    # Common phrases and expressions (50 examples)
-    'Hyvää huomenta kaikille!',
-    'Mitä kuuluu sinulle tänään?',
-    'Kaikki hyvin täällä, kiitos.',
-    'Toivottavasti päivä sujuu mukavasti.',
-    'Mukavaa viikonloppua sinulle!',
-    'Nähdään taas huomenna.',
-    'Pidä huolta itsestäsi.',
-    'Ole hyvä ja avaa ovi.',
-    'Kiitos avusta, arvostan sitä.',
-    'Anteeksi myöhästyminen.',
-    'Ei haittaa, tapahtuupa.',
-    'Olkaa hyvä ja istukaa.',
-    'Saanko tarjota kahvia?',
-    'Kyllä kiitos, otan mielelläni.',
-    'Ei kiitos, olen jo juonut.',
-    'Voisitko auttaa minua hetkeksi?',
-    'Totta kai, mielelläni.',
-    'Valitettavasti en ehdi juuri nyt.',
-    'Ymmärrän tilanteesi hyvin.',
-    'Se on todella ikävää.',
-    'Onnea matkaan sinulle!',
-    'Menestystä uudessa työssä!',
-    'Onnea syntymäpäivänäsi!',
-    'Hyvää joulua ja uutta vuotta!',
-    'Iloista pääsiäistä!',
-    'Hyvää kesää kaikille!',
-    'Mukavaa lomaa sinulle!',
-    'Paljon onnea uuteen kotiin!',
-    'Onneksi olkoon valmistumisesta!',
-    'Kaikkea hyvää tulevaisuuteen!',
-    'Hoidathan asian kuntoon?',
-    'Hoidan asian välittömästi.',
-    'Otan asian selvitykseen.',
-    'Palaan asiaan myöhemmin.',
-    'Kuulostaa hyvältä suunnitelmalta.',
-    'Tuo on erinomainen idea.',
-    'Mielenkiintoinen näkökulma asiaan.',
-    'En ole samaa mieltä.',
-    'Ymmärrän pointtisi kyllä.',
-    'Totta puhuen en tiedä.',
-    'Minulla ei ole mielipidettä.',
-    'Asia on monimutkainen.',
-    'Tilanne on vaikea.',
-    'Ratkaisu löytyy varmasti.',
-    'Kyllä tämä tästä järjestyy.',
-    'Ei hätää, selvitetään yhdessä.',
-    'Homma hoituu kyllä.',
-    'Turha huolehtia turhasta.',
-    'Kaikki järjestyy aikanaan.',
-    'Kärsivällisyys on hyve tässäkin.',
-]
-
-# Generate additional negative examples using templates
-NEGATIVE_TEMPLATES = [
-    'Päivä oli {adj} ja {adv} onnistunut.',
-    'Tilanne näyttää {adj} ja {adv} selvältä.',
-    'Homma on {adj} mutta {adv} hoidettavissa.',
-    'Asia tuntuu {adj} ja {adv} monimutkaiselta.',
-    'Lopputulos oli {adj} ja {adv} tyydyttävä.',
-    'Kokemus oli {adj} ja {adv} opettavainen.',
-    'Tilaisuus oli {adj} ja {adv} järjestetty.',
-    'Projekti eteni {adv} ja oli {adj}.',
-    'Suunnitelma vaikuttaa {adj} ja {adv} toteutettavalta.',
-    'Idea kuulostaa {adj} ja {adv} kiinnostavalta.',
     'Etelä-Suomessa sataa vettä ja Pohjois-Suomessa on pakkasta.',
     'Itä-Helsingin alueella asuu paljon ihmisiä, mutta Länsi-Helsingissä on enemmän puistoja.',
     'Keskiviikkona kello 14.00 pidettiin kokous, jossa oli 15 osallistujaa.',
@@ -2034,16 +1191,6 @@ NEGATIVE_TEMPLATES = [
     'Marraskuu on usein harmaa ja sateinen kuukausi Suomessa.'
 ]
 
-# Generate 100 more negative examples from templates
-for _ in range(100):
-    template = random.choice(NEGATIVE_TEMPLATES)
-    sentence = template.format(
-        adj=random.choice(ADJECTIVES),
-        adv=random.choice(ADVERBS)
-    )
-    FALSE_POSITIVES.append(sentence)
-
-print(f"Generated {len(FALSE_POSITIVES)} negative examples (sentences with no entities)")
 
 for sentence in FALSE_POSITIVES:
     doc = nlp(sentence)
@@ -2077,18 +1224,12 @@ for i in range(0, len(EVALUATION_SENTENCES)):
 
 def train(training_iterations=1, score_threshold=0, verbose=False):
 
-    print("\n" + "="*80)
-    print("🚀 STARTING SPACY NER MODEL TRAINING")
-    print("="*80)
-    print(f"Training Configuration:")
-    print(f"  • Iterations: {training_iterations}")
-    print(f"  • Score threshold: {score_threshold}")
-    print(f"  • Total training sentences: {len(TRAIN_DATA)}")
-    print(f"    - Names: {len(NAME_LIST)}")
-    print(f"    - Streets: {len(STREET_LIST)}")
-    print(f"    - Areas: {len(AREA_LIST)}")
-    print(f"    - Negative examples: {len(FALSE_POSITIVES)}")
-    print("="*80 + "\n")
+    print("Train Spacy NER model with names. Iterations = {i}, score threshold = {s}".format(i=training_iterations, s=score_threshold))
+    print("using {l} sentences".format(l=len(TRAIN_DATA)))
+    print("- containing  {n} examples with generated names.".format(n=len(NAME_LIST)))
+    print("- containing  {n} examples with streets.".format(n=len(STREET_LIST)))
+    print("- containing  {n} examples with areas.".format(n=len(AREA_LIST)))
+    print("- containing  {n} examples with random sentences.".format(n=len(FALSE_POSITIVES)))
 
     # NER training
     def evaluate(nlp, data, verbose=False):
@@ -2098,248 +1239,133 @@ def train(training_iterations=1, score_threshold=0, verbose=False):
             recall = scores["ents_r"]
             f1_score = scores["ents_f"]
             if verbose:
-                print(f"  📊 Overall Metrics:")
-                print(f"     Precision: {precision*100:6.2f}%  (How many detected entities are correct)")
-                print(f"     Recall:    {recall*100:6.2f}%  (How many actual entities were found)")
-                print(f"     F1 Score:  {f1_score*100:6.2f}%  (Balanced measure of both)")
+                print(f"Precision: {precision:.4f}")
+                print(f"Recall: {recall:.4f}")
+                print(f"F1 Score: {f1_score:.4f}")
         if "ents_per_type" in scores:
             per_type = scores["ents_per_type"]
             if verbose:
-                print(f"  📋 Per Entity Type:")
                 for entity_type, metrics in per_type.items():
-                    print(f"     {entity_type:8s}: P={metrics['p']*100:5.1f}%  R={metrics['r']*100:5.1f}%  F1={metrics['f']*100:5.1f}%")
+                    print(f"{entity_type}: Precision: {metrics['p']:.4f}, Recall: {metrics['r']:.4f}, F1: {metrics['f']:.4f}")
         else:
             if verbose:
-                print("  ⚠️  No entity types found", scores)
+                print("No entity types found", scores)
         return scores
-
-    # Run baseline evaluation on external test set BEFORE any training
-    print("\n" + "📋 BASELINE EVALUATION - External Test Set (Before Training)")
-    print("-" * 80)
-    baseline_eval_results = evaluate_nlp(nlp)
-    print("-" * 80)
 
     if exec_ruler:
         if "entity_ruler" not in nlp.pipe_names:
             ruler = nlp.add_pipe("entity_ruler", after="ner", config={"phrase_matcher_attr": "LOWER", "overwrite_ents": True})
         else:
             ruler = nlp.get_pipe("entity_ruler")
-        print("Add generated patterns to Entity Ruler...")
         ruler.add_patterns(build_patterns(_PRODUCTS, 'PRODUCT'))
         ruler.add_patterns(build_patterns(_STREETS, STREET_ENTITY))
         ruler.add_patterns(build_patterns(_AREAS, AREA_ENTITY))
         ruler.add_patterns(build_patterns(_ORGANIZATIONS, 'ORG'))
         ruler.add_patterns(build_patterns(_SKIP, 'O'))
-        print("📌 Entity Ruler patterns added")
+        print("Evaluate after entity ruler update")
         evaluate(nlp, EVAL_DATA, verbose=verbose)
 
     if exec_ner:
         n_iter = training_iterations
 
-        print("\n" + "📈 BASELINE EVALUATION (Before Training)")
-        print("-" * 80)
-        score = evaluate(nlp, EVAL_DATA, verbose=True)
-        baseline_f1 = score.get("ents_f", 0.0)
-        baseline_precision = score.get("ents_p", 0.0)
-        baseline_recall = score.get("ents_r", 0.0)
-        print(f"\n⚡ Starting training to improve from baseline F1: {baseline_f1*100:.2f}%")
-        print("-" * 80 + "\n")
+        score = evaluate(nlp, EVAL_DATA)
+        print(f"Scores before update: {score}")
 
-        # Split training data ONCE before training (80/20 split)
-        random.shuffle(TRAIN_DATA)
-        train_split_idx = int(TRAINING_CONFIG['train_split'] * len(TRAIN_DATA))
-        train_examples = TRAIN_DATA[:train_split_idx]
-        dev_examples = TRAIN_DATA[train_split_idx:]
-
-        print(f"📊 Data Split: {len(train_examples)} training, {len(dev_examples)} validation examples\n")
-
-        # Early stopping parameters from config
+        # Early stopping parameters
         best_f1 = 0
-        patience = TRAINING_CONFIG['patience']
-        min_improvement = TRAINING_CONFIG['min_improvement']
+        patience = 5
         patience_counter = 0
         metrics_history = {'loss': [], 'val_f1': [], 'val_precision': [], 'val_recall': []}
 
         other_pipes = [pipe for pipe in nlp.pipe_names if pipe != 'ner']
         with nlp.disable_pipes(*other_pipes):  # only train NER
             optimizer = nlp.resume_training()
-
-            # Configure optimizer with learning rate from config
-            optimizer.learn_rate = TRAINING_CONFIG['learn_rate']
-            optimizer.L2 = 1e-6  # L2 regularization
-
-            print("🎯 TRAINING IN PROGRESS")
-            print("-" * 80)
-            print(f"Learning Rate: {TRAINING_CONFIG['learn_rate']}, Dropout: {TRAINING_CONFIG['dropout']}")
-            print(f"{'Iter':>6} | {'Loss':>8} | {'F1':>7} | {'Precision':>9} | {'Recall':>7} | {'Status':>20}")
-            print("-" * 80)
-
             for i in range(n_iter):  # Number of training iterations
-                # Shuffle training data each iteration
-                random.shuffle(train_examples)
-
+                # Batch up the examples using spaCy's minibatch
+                random.shuffle(TRAIN_DATA)
                 losses = {}
-                # Update the model with the training examples
-                batches = minibatch(train_examples, size=compounding(4.0, 32.0, 1.001))
+                # Update the model with the new examples
+                batches = minibatch(TRAIN_DATA, size=compounding(4.0, 32.0, 1.001))
                 for batch in batches:
-                    nlp.update(batch, drop=TRAINING_CONFIG['dropout'], losses=losses, sgd=optimizer)
+                    nlp.update(batch, drop=0.5, losses=losses, sgd=optimizer)
 
                 # Evaluate on validation set
-                val_scores = evaluate(nlp, dev_examples, verbose=False)
+                val_scores = evaluate(nlp, EVAL_DATA, verbose=False)
                 current_f1 = val_scores.get("ents_f") or 0.0
                 current_precision = val_scores.get("ents_p") or 0.0
                 current_recall = val_scores.get("ents_r") or 0.0
 
                 # Track metrics
-                loss_value = losses.get('ner', 0.0)
-                metrics_history['loss'].append(loss_value)
+                metrics_history['loss'].append(losses.get('ner', 0.0))
                 metrics_history['val_f1'].append(current_f1)
                 metrics_history['val_precision'].append(current_precision)
                 metrics_history['val_recall'].append(current_recall)
 
-                # Determine status indicator with minimum improvement threshold
-                status = ""
-                improvement = current_f1 - best_f1
-                if improvement > min_improvement:
-                    status = f"✅ +{improvement*100:.2f}% IMPROVED!"
-                    best_f1 = current_f1
-                    patience_counter = 0
-                else:
-                    patience_counter += 1
-                    if patience_counter == 1:
-                        status = f"⚠️  No significant improvement"
-                    else:
-                        status = f"⚠️  No improvement ({patience_counter}/{patience})"
-
-                # Print progress every iteration or when verbose
-                if verbose or i % 1 == 0 or i == n_iter - 1:
-                    print(f"{i+1:6d} | {loss_value:8.4f} | {current_f1*100:6.2f}% | {current_precision*100:8.2f}% | {current_recall*100:6.2f}% | {status}")
+                if verbose or i % 5 == 0:
+                    print(f"Iteration {i+1}/{n_iter}: Loss={losses.get('ner', 0.0):.4f}, Eval F1={current_f1:.4f}, Eval Precision={current_precision:.4f}, Eval Recall={current_recall:.4f}")
 
                 # Early stopping check
-                if patience_counter >= patience:
-                    print("-" * 80)
-                    print(f"🛑 Early stopping at iteration {i+1} (no improvement for {patience} iterations)")
-                    break
-
-            print("-" * 80)
+                if current_f1 > best_f1:
+                    best_f1 = current_f1
+                    patience_counter = 0
+                    if verbose:
+                        print(f"  → New best F1: {best_f1:.4f}")
+                else:
+                    patience_counter += 1
+                    if patience_counter >= patience:
+                        print(f"Early stopping at iteration {i+1} (no improvement for {patience} iterations)")
+                        break
 
         for p in other_pipes:
             nlp.enable_pipe(p)
 
-        # Calculate improvements
-        f1_improvement = (best_f1 - baseline_f1) * 100
-        precision_improvement = (metrics_history['val_precision'][-1] - baseline_precision) * 100
-        recall_improvement = (metrics_history['val_recall'][-1] - baseline_recall) * 100
-
-        print("\n" + "="*80)
-        print("📊 TRAINING RESULTS SUMMARY")
-        print("="*80)
-        print(f"\n{'Metric':<15} | {'Before':>10} | {'After':>10} | {'Change':>15}")
-        print("-" * 80)
-        print(f"{'F1 Score':<15} | {baseline_f1*100:9.2f}% | {best_f1*100:9.2f}% | {f1_improvement:+14.2f}%")
-        print(f"{'Precision':<15} | {baseline_precision*100:9.2f}% | {metrics_history['val_precision'][-1]*100:9.2f}% | {precision_improvement:+14.2f}%")
-        print(f"{'Recall':<15} | {baseline_recall*100:9.2f}% | {metrics_history['val_recall'][-1]*100:9.2f}% | {recall_improvement:+14.2f}%")
-        print("-" * 80)
-
-        # Overall verdict
-        if f1_improvement > 5:
-            print("✅ EXCELLENT: Training significantly improved the model! (+{:.1f}% F1)".format(f1_improvement))
-        elif f1_improvement > 1:
-            print("✅ GOOD: Training improved the model moderately. (+{:.1f}% F1)".format(f1_improvement))
-        elif f1_improvement > 0:
-            print("⚠️  MINOR: Training showed slight improvement. (+{:.1f}% F1)".format(f1_improvement))
-        else:
-            print("❌ NO EFFECT: Training did not improve the model. ({:.1f}% F1)".format(f1_improvement))
-
-        print("="*80 + "\n")
-
-    # Run evaluation on external test set AFTER training
-    print("\n" + "📋 FINAL EVALUATION - External Test Set (After Training)")
-    print("-" * 80)
-    final_eval_results = evaluate_nlp(nlp)
-    print("-" * 80)
-
+        print(f"\nBest validation F1 score: {best_f1:.4f}")
+        print(f"Final metrics - Precision: {metrics_history['val_precision'][-1]:.4f}, Recall: {metrics_history['val_recall'][-1]:.4f}")
     test_score = 0
+    eval_results = evaluate_nlp(nlp)
 
     if exec_test:
-        print("\n" + "🧪 RUNNING COMPREHENSIVE TESTS")
-        print("-" * 80)
+        print("\nAfter training test coverage is now: ")
         test_score = run_test(amount=100)
-        print(f"\n📊 Final Evaluation on Test Set:")
-        print("-" * 80)
-        scores = evaluate(nlp, EVAL_DATA, verbose=True)
-        print("-" * 80)
+        print(f"\nScores after entity ruler update:")
+        scores = evaluate(nlp, EVAL_DATA)
+        print(scores)
 
     if save_model:
-        print("\n" + "💾 MODEL SAVING")
-        print("-" * 80)
         if test_score > score_threshold:
-            print(f"✅ Model meets threshold ({test_score:.2f}% > {score_threshold}%)")
-            print(f"📁 Saving model to: {target_path}")
+            print(f"Saving model with score {test_score} to {target_path}")
             nlp.to_disk(target_path)
-            print("✅ Model saved successfully!")
         else:
-            print(f"❌ Model does not meet threshold ({test_score:.2f}% ≤ {score_threshold}%)")
-            print("⚠️  Model NOT saved.")
-        print("-" * 80)
-    return test_score, final_eval_results
+            print(f"Model test score {test_score} is below threshold {score_threshold}, not saving model.")
+    return test_score, eval_results
 
 
 if __name__ == "__main__":
-    # Use configuration-based iterations (20 iterations with early stopping)
-    iterations = [TRAINING_CONFIG['iterations']]
+    iterations = [30]  # Increased from 1 to 30 for better training with early stopping
     test_score = 0
     highest_score = 0
     results = []
     timestamp = datetime.datetime.now().strftime('%Y.%m.%d %H:%M')
-
-    print("\n" + "="*80)
-    print("🎓 SPACY NER MODEL FINE TUNING - FINNISH TEXT ANONYMIZER")
-    print("="*80)
-    print(f"Base Model: {base_model}")
-    print(f"Training Data Size: Names={NAMES_TEST_DATA_SIZE}, Streets={STREETS_TEST_DATA_SIZE}, Areas={AREAS_TEST_DATA_SIZE}")
-    print(f"Negative Examples: {len(FALSE_POSITIVES)}")
-    print(f"\nTraining Configuration:")
-    print(f"  • Max Iterations: {TRAINING_CONFIG['iterations']}")
-    print(f"  • Learning Rate: {TRAINING_CONFIG['learn_rate']}")
-    print(f"  • Dropout: {TRAINING_CONFIG['dropout']}")
-    print(f"  • Early Stopping Patience: {TRAINING_CONFIG['patience']}")
-    print(f"  • Min Improvement Threshold: {TRAINING_CONFIG['min_improvement']}")
-    print(f"  • Train/Val Split: {int(TRAINING_CONFIG['train_split']*100)}/{int((1-TRAINING_CONFIG['train_split'])*100)}")
-    print(f"Timestamp: {timestamp}")
-    print("="*80 + "\n")
-
-    with open(f"logs/training_{timestamp}.txt", "a") as f:
+    with open(f"training_{timestamp}.txt", "a") as f:
         f.write(f"NAMES: {NAMES_TEST_DATA_SIZE} ")
         f.write(f"STREETS: {STREETS_TEST_DATA_SIZE} ")
-        f.write(f"AREAS: {AREAS_TEST_DATA_SIZE} ")
-        f.write(f"NEGATIVE: {len(FALSE_POSITIVES)} \n")
-
+        f.write(f"AREAS: {AREAS_TEST_DATA_SIZE} \n")
     for i in iterations:
+        print(f"\n\n\nTraining with {i} iterations\n\n\n")
         test_score, eval_results = train(training_iterations=i, score_threshold=highest_score)
-
+        print(f"Test score after {i} iterations: {test_score}")
         if test_score > highest_score:
             highest_score = test_score
-
         # log to file
         with open("training.log", "a") as f:
-            f.write(f"{datetime.datetime.now().strftime('%Y.%m.%d %H:%M')}: Training with {i} iterations. Test score: {test_score:.2f}%. Model {base_model}.  Training data: Names {NAMES_TEST_DATA_SIZE}, Streets {STREETS_TEST_DATA_SIZE}, Areas {AREAS_TEST_DATA_SIZE}, Negative {len(FALSE_POSITIVES)}\n")
-
-        stats = f"Iterations: {i}, Test Score: {test_score:.2f}%\n{eval_results}\n"
+            f.write(f"{datetime.datetime.now().strftime('%Y.%m.%d %H:%M')}: Training with {i} iterations. Test score: {test_score}. Model {base_model}.  Augmented training data: Names {NAMES_TEST_DATA_SIZE}, Streets {STREETS_TEST_DATA_SIZE}, Areas {AREAS_TEST_DATA_SIZE}\n")
+        stats = "Iterations " + str(i) + ". Test_score: " + str(test_score) + "\n" + eval_results + "\n\n\n"
         results.append(stats)
-
         # Full report
         with open(f"training_{timestamp}.txt", "a") as f:
             f.write("Training run: " + datetime.datetime.now().strftime('%Y.%m.%d %H:%M') + "\n")
             f.write(stats)
 
-    # Print final summary
-    print("\n" + "="*80)
-    print("📋 TRAINING SESSION SUMMARY")
-    print("="*80)
-    for idx, r in enumerate(results, 1):
-        print(f"\nRun {idx}:")
+    # finally print the results
+    for r in results:
         print(r)
-    print("="*80)
-    print(f"🏆 Highest Test Score Achieved: {highest_score:.2f}%")
-    print("="*80)

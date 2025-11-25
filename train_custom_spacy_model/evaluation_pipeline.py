@@ -317,6 +317,7 @@ def prepare_evaluation_data(nlp: spacy.Language) -> List[Example]:
     eval_data = []
 
     for i in range(len(EVALUATION_SENTENCES)):
+        # Select sentence, value, and label from same position, eg. "{s} on katu Helsingissä." "Liisankatu" "LOC"
         sentence = EVALUATION_SENTENCES[i]
         value = EVALUATION_VALUES[i]
         label = EVALUATION_LABELS[i]

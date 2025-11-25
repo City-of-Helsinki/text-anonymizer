@@ -21,13 +21,11 @@ from model_version import FINETUNED_MODEL_VERSION
 # Training configuration
 TRAINING_CONFIG = {
     'iterations': 10,
-    'dropout': 0.3,            # Higher regularization
-    'learn_rate': 0.001,       # Keep higher rate
-    'patience': 3,             # Stop faster
-    'min_improvement': 0.01,   # 1% improvement required
-    'train_split': 0.6,
+    'dropout': 0.35,      # Return to best performer
+    'learn_rate': 0.003,
+    'patience': 3,
+    'min_improvement': 0.005,
 }
-
 
 class SpacyNERTrainer:
     """Handles the training of SpaCy NER model"""
@@ -36,10 +34,12 @@ class SpacyNERTrainer:
         self,
         nlp: spacy.Language,
         train_data: List[Example],
+        eval_data: List[Example],
         config: Dict = None
     ):
         self.nlp = nlp
         self.train_data = train_data
+        self.eval_data = eval_data
         self.config = config or TRAINING_CONFIG
         self.metrics_history = {
             'loss': [],
@@ -48,13 +48,15 @@ class SpacyNERTrainer:
             'val_recall': []
         }
 
-        # Split data into train and validation
-        random.shuffle(self.train_data)
-        train_split_idx = int(self.config['train_split'] * len(self.train_data))
-        self.train_examples = self.train_data[:train_split_idx]
-        self.dev_examples = self.train_data[train_split_idx:]
+        # Augment eval data with 10% of training data for better validation
+        extra_eval_size = max(1, len(self.train_data) // 5)
+        extra_eval_data = random.sample(self.train_data, extra_eval_size)
+        self.eval_data.extend(extra_eval_data)
+        # Remove the sampled examples from training data to avoid leakage
+        self.train_data = [ex for ex in self.train_data if ex not in extra_eval_data]
 
-        print(f"Data Split: {len(self.train_examples)} training, {len(self.dev_examples)} validation examples\n")
+        
+        print(f"Fine tuning data: {len(self.train_data)} training, {len(self.eval_data)} validation examples\n")
 
     def evaluate(self, data: List[Example], verbose: bool = False) -> Dict:
         """Evaluate model on given data"""
@@ -95,14 +97,14 @@ class SpacyNERTrainer:
         print(f"  • Dropout: {self.config['dropout']}")
         print(f"  • Early Stopping Patience: {self.config['patience']}")
         print(f"  • Min Improvement Threshold: {self.config['min_improvement']}")
-        print(f"  • Total training examples: {len(self.train_examples)}")
-        print(f"  • Validation examples: {len(self.dev_examples)}")
+        print(f"  • Total training examples: {len(self.train_data)}")
+        print(f"  • Validation examples: {len(self.eval_data)}")
         print("="*80 + "\n")
 
         # Baseline evaluation
         print("BASELINE EVALUATION (Before Training)")
         print("-" * 80)
-        baseline_scores = self.evaluate(self.dev_examples, verbose=True)
+        baseline_scores = self.evaluate(self.eval_data, verbose=True)
         baseline_f1 = baseline_scores.get("ents_f", 0.0)
         baseline_precision = baseline_scores.get("ents_p", 0.0)
         baseline_recall = baseline_scores.get("ents_r", 0.0)
@@ -121,7 +123,7 @@ class SpacyNERTrainer:
 
             # Configure optimizer
             optimizer.learn_rate = self.config['learn_rate']
-            optimizer.L2 = 1e-6  # L2 regularization
+            optimizer.L2 = 1e-5  # L2 regularization
 
             print("TRAINING IN PROGRESS")
             print("-" * 80)
@@ -131,21 +133,22 @@ class SpacyNERTrainer:
 
             for i in range(self.config['iterations']):
                 # Shuffle training data each iteration
-                random.shuffle(self.train_examples)
+                random.shuffle(self.train_data)
 
                 losses = {}
                 # Update model with training examples
-                batches = minibatch(self.train_examples, size=compounding(4.0, 32.0, 1.001))
+                batches = minibatch(self.train_data, size=compounding(4.0, 32.0, 1.001))
                 for batch in batches:
                     self.nlp.update(
                         batch,
                         drop=self.config['dropout'],
                         losses=losses,
-                        sgd=optimizer
+                        sgd=optimizer,
+                        annotates=["ner"]  # Enforce stricter boundary matching
                     )
 
                 # Evaluate on validation set
-                val_scores = self.evaluate(self.dev_examples, verbose=False)
+                val_scores = self.evaluate(self.eval_data, verbose=False)
                 current_f1 = val_scores.get("ents_f") or 0.0
                 current_precision = val_scores.get("ents_p") or 0.0
                 current_recall = val_scores.get("ents_r") or 0.0
@@ -187,25 +190,18 @@ class SpacyNERTrainer:
         for p in other_pipes:
             self.nlp.enable_pipe(p)
 
-        # Calculate improvements
-        final_f1 = self.metrics_history['val_f1'][-1]
-        final_precision = self.metrics_history['val_precision'][-1]
-        final_recall = self.metrics_history['val_recall'][-1]
+        best_idx = self.metrics_history['val_f1'].index(best_f1)
+        best_precision = self.metrics_history['val_precision'][best_idx]
+        best_recall = self.metrics_history['val_recall'][best_idx]
 
+        baseline_f1 = baseline_scores.get("ents_f", 0.0)
         f1_improvement = (best_f1 - baseline_f1) * 100
-        precision_improvement = (final_precision - baseline_precision) * 100
-        recall_improvement = (final_recall - baseline_recall) * 100
+        precision_improvement = (best_precision - baseline_precision) * 100
+        recall_improvement = (best_recall - baseline_recall) * 100
 
-        # Print summary
-        print("\n" + "="*80)
-        print("TRAINING RESULTS SUMMARY")
-        print("="*80)
-        print(f"\n{'Metric':<15} | {'Before':>10} | {'After':>10} | {'Change':>15}")
-        print("-" * 80)
-        print(f"{'F1 Score':<15} | {baseline_f1*100:9.2f}% | {best_f1*100:9.2f}% | {f1_improvement:+14.2f}%")
-        print(f"{'Precision':<15} | {baseline_precision*100:9.2f}% | {final_precision*100:9.2f}% | {precision_improvement:+14.2f}%")
-        print(f"{'Recall':<15} | {baseline_recall*100:9.2f}% | {final_recall*100:9.2f}% | {recall_improvement:+14.2f}%")
-        print("-" * 80)
+        print(f"{'F1 Score':<15} | {baseline_f1 * 100:9.2f}% | {best_f1 * 100:9.2f}% | {f1_improvement:+14.2f}%")
+        print(f"{'Precision':<15} | {baseline_precision * 100:9.2f}% | {best_precision * 100:9.2f}% | {precision_improvement:+14.2f}%")
+        print(f"{'Recall':<15} | {baseline_recall * 100:9.2f}% | {best_recall * 100:9.2f}% | {recall_improvement:+14.2f}%")
 
         # Overall verdict
         if f1_improvement > 5:
@@ -223,8 +219,8 @@ class SpacyNERTrainer:
             'baseline_f1': baseline_f1,
             'final_f1': best_f1,
             'improvement': f1_improvement,
-            'final_precision': final_precision,
-            'final_recall': final_recall
+            'final_precision': best_precision,
+            'final_recall': best_recall
         }
 
     def add_entity_ruler(self, patterns_data: Dict[str, List[str]]):
@@ -278,6 +274,7 @@ def save_model(nlp: spacy.Language, target_path: str = None) -> bool:
 
 def train_model_pipeline(
     train_data: List[Example],
+    eval_data: List[Example],
     nlp: spacy.Language,
     use_entity_ruler: bool = True,
     patterns_data: Dict[str, List[str]] = None,
@@ -307,7 +304,7 @@ def train_model_pipeline(
     print("="*80 + "\n")
 
     # Initialize trainer
-    trainer = SpacyNERTrainer(nlp, train_data, config)
+    trainer = SpacyNERTrainer(nlp, train_data, eval_data, config)
 
     # Add entity ruler if requested
     if use_entity_ruler and patterns_data:

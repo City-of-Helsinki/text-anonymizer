@@ -30,8 +30,8 @@ NAME_ENTITY = 'PERSON'
 # Configuration for data generation
 DATA_CONFIG = {
     'areas_size': 150,
-    'streets_size': 400,
-    'names_size': 200,
+    'streets_size': 975,
+    'names_size': 675,
     'negative_examples_size': 500,
     'mixed_person_street': 300,
     'mixed_person_area': 100,

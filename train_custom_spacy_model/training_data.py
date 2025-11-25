@@ -511,7 +511,7 @@ SENTENCES_AREAS = [
     'Ymmärrän, että {s} rakennustyömaasta aiheutuu melua, mutta voitaisiinko sitä rajoittaa iltaisin?',
     'Mielestäni {s} juna-aseman ympäristö voisi olla turvallisempi.',
     'Onko mahdollista lisätä liikennemerkkejä {s} risteyksiin parantamaan näkyvyyttä?',
-    'Haluaisin kiittää {s} alueen katujen kunnossapidosta talven aikana.',
+    'Haluaisin kiittää {s}a alueen katujen kunnossapidosta talven aikana.',
     'Onko tietoa, milloin {s} vesijohtoverkoston vuotava kohta korjataan?',
     'Olisi hienoa, jos {s} asukkaille tarjottaisiin yhteisökompostointimahdollisuus.',
     'En ole tyytyväinen siihen, miten {s} parkkialueen liikennejärjestelyt on suunniteltu.',
@@ -534,7 +534,7 @@ SENTENCES_AREAS = [
 #sentence_resources
 EVALUATION_SENTENCES = [
     # Name evaluation sentences - 25
-    'Haluaisin kiittää {s} hänen nopeasta toiminnastaan, kun hän huolehti kaatuneen puun poistamisesta tieltämme, mikä paransi merkittävästi alueemme turvallisuutta. ',
+    'Haluaisin kiittää {s}a hänen nopeasta toiminnastaan, kun hän huolehti kaatuneen puun poistamisesta tieltämme, mikä paransi merkittävästi alueemme turvallisuutta. ',
     '{s} ansaitsee kiitokset siitä, kuinka hienosti hän on pitänyt huolta puistojemme kunnossapidosta, mikä tekee niistä viihtyisiä ja kauniita paikkoja kaikille. ',
     'Kiitän {s} hänen tehokkaasta tavastaan käsitellä melusaasteeseen liittyviä valituksia, mikä on parantanut monien asukkaiden elämänlaatua. ',
     'Olen iloinen nähdessäni, että {s} on ottanut toiveemme huomioon ja järjestänyt lisää leikkialueita lapsille, mikä on tuonut iloa ja aktiivisuutta yhteisöömme. ',
@@ -602,10 +602,10 @@ EVALUATION_SENTENCES = [
     'Asunnot {s} ovat kysyttyjä.',
     '{s} terveyskeskus palvelee asukkaita hyvin.',
     'Harrastusmahdollisuudet {s} ovat monipuoliset.',
-    'Kerhotalo {s} järjestää paljon tapahtumia.',
+    'Kerhotalo {s} järjestää paljon tapahtumia, voisiko kaupunki tukea sitä rahallisesti?',
     '{s} kirjasto on hyvin varustettu.',
     'Leikkipaikat {s} ovat turvallisia.',
-    'Yhteisöllisyys {s} on vahvaa.',
+    'Yhteisöllisyys {s} on vahvaa, mutta milloin saamme luvatun nuorisotalon?',
     '{s} ravintoloissa on hyvä tunnelma.',
     'Liikuntapuisto {s} tarjoaa paljon aktiviteetteja.',
     '{s} markkinat houkuttelevat paljon väkeä.',

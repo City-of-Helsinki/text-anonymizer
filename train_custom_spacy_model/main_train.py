@@ -88,6 +88,7 @@ def main(
     save_path = f"../custom_spacy_model/{FINETUNED_MODEL_VERSION}" if save_model else None
     best_f1, metrics = train_model_pipeline(
         train_data=train_data,
+        eval_data=eval_data,
         nlp=nlp,
         use_entity_ruler=use_entity_ruler,
         patterns_data=patterns_data,
