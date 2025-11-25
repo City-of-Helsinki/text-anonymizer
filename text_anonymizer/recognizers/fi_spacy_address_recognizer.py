@@ -18,35 +18,39 @@ class SpacyAddressRecognizer(LocalRecognizer):
     """
     # See https://demos.explosion.ai/matcher for explanation of patterns
     DEFAULT_PATTERNS = [
-        [
-            {'ENT_TYPE': 'PERSON', 'OP': '+'},
-            {"TEXT": {"REGEX": "([0-9]{1,4}})(\s)?([A-Za-z]{0,1})?(\s)?([0-9]{0,4})?"}, 'OP': '+'}
-        ],
+        # Most specific: street + number + letter + number
         [
             {'ENT_TYPE': 'LOC', 'OP': '+'},
-            {"TEXT": {"REGEX": "([0-9]{1,4}})(\s)?([A-Za-z]{0,1})?(\s)?([0-9]{0,4})?"}, 'OP': '+'}
+            {'ENT_TYPE': 'CARDINAL'},
+            {'IS_ALPHA': True, 'LENGTH': 1},
+            {'IS_DIGIT': True}
+        ],
+        # Medium: street + number + letter
+        [
+            {'ENT_TYPE': 'LOC', 'OP': '+'},
+            {'ENT_TYPE': 'CARDINAL'},
+            {'IS_ALPHA': True, 'LENGTH': 1}
+        ],
+        # Least specific: street + number only
+        [
+            {'ENT_TYPE': 'LOC', 'OP': '+'},
+            {'ENT_TYPE': 'CARDINAL'}
+        ],
+        # Same patterns for GPE
+        [
+            {'ENT_TYPE': 'GPE', 'OP': '+'},
+            {'ENT_TYPE': 'CARDINAL'},
+            {'IS_ALPHA': True, 'LENGTH': 1},
+            {'IS_DIGIT': True}
         ],
         [
             {'ENT_TYPE': 'GPE', 'OP': '+'},
-            {"TEXT": {"REGEX": "([0-9]{1,4}})(\s)?([A-Za-z]{0,1})?(\s)?([0-9]{0,4})?"}, 'OP': '+'}
-        ],
-        [
-            {'ENT_TYPE': 'PERSON', 'OP': '+'},
-            {'ENT_TYPE': 'CARDINAL', 'OP': '+', 'IS_DIGIT': True},
-            {'IS_ALPHA': True, 'OP': '+', 'LENGTH': 1},
-            {'ENT_TYPE': 'CARDINAL', 'OP': '?'},
-        ],
-        [
-            {'ENT_TYPE': 'LOC', 'OP': '+'},
-            {'ENT_TYPE': 'CARDINAL', 'OP': '+', 'IS_DIGIT': True},
-            {'IS_ALPHA': True, 'OP': '?', 'LENGTH': 1},
-            {'ENT_TYPE': 'CARDINAL', 'OP': '?'},
+            {'ENT_TYPE': 'CARDINAL'},
+            {'IS_ALPHA': True, 'LENGTH': 1}
         ],
         [
             {'ENT_TYPE': 'GPE', 'OP': '+'},
-            {'ENT_TYPE': 'CARDINAL', 'OP': '+'},
-            {'IS_ALPHA': True, 'OP': '+', 'LENGTH': 1, 'IS_DIGIT': True},
-            {'ENT_TYPE': 'CARDINAL', 'OP': '?'},
+            {'ENT_TYPE': 'CARDINAL'}
         ]
     ]
 
@@ -79,58 +83,51 @@ class SpacyAddressRecognizer(LocalRecognizer):
     def analyze(self, text, entities, nlp_artifacts=None):
         results = []
         if nlp_artifacts and nlp_artifacts.nlp_engine and nlp_artifacts.nlp_engine.nlp:
-            # Ensure nlp artifacts
             nlp = nlp_artifacts.nlp_engine.nlp['fi']
             matcher = Matcher(nlp.vocab)
-            # Add match ID "Address" with no callback and one pattern
+
             c = 0
             for pattern in self.patterns:
                 matcher.add(f"{self.RESULT_TYPE}{str(c)}", [pattern])
                 c += 1
 
-            # Iterate trough tokens
             doc = nlp_artifacts.tokens.doc
             matches = matcher(doc)
-            start_index = 100000000
-            end_index = 0
-            best_label = ''
-            span = None
 
-            # DEBUG entity recognition
-            # for e in doc.ents:
-            #     print(e.text, e.label_)
+            best_result = None
+            max_span_length = 0
 
             for match_id, start, end in matches:
-                span = doc[start:end]  # The matched span
+                span = doc[start:end]
+                span_length = end - start
 
-                first_entity = doc.ents[0].label_
+                # Only process if this is the longest match so far
+                if span_length > max_span_length:
+                    first_entity = doc.ents[0].label_
+                    label = self.supported_entities[0]
+                    match_pattern = matcher.get(match_id)
+                    textual_explanation = f"First entity: {first_entity}, Pattern: {json.dumps(match_pattern)}"
 
-                # Build result and explanation
-                label = self.supported_entities[0]
-                match_pattern = matcher.get(match_id)
-                textual_explanation = f"First entity: {first_entity}, Pattern: {json.dumps(match_pattern)}"
+                    explanation = AnalysisExplanation(
+                        recognizer=self.__class__.__name__,
+                        original_score=self.score,
+                        textual_explanation=textual_explanation,
+                    )
 
-                # Build explanation
-                explanation = AnalysisExplanation(
-                    recognizer=self.__class__.__name__,
-                    original_score=self.score,
-                    textual_explanation=textual_explanation,
-                )
+                    start_index = span.start_char
+                    end_index = span.end_char
 
-                start_index = span.start_char
-                end_index = span.end_char
+                    if not self.anonymize_full_string and span and span.text:
+                        m = re.search(r"\d", span.text)
+                        if m:
+                            start_index = span.start_char + m.start()
 
-                if not self.anonymize_full_string and span and span.text:
-                    m = re.search(r"\d", span.text)
-                    if m:
-                        # Match is for address end part inside span. Append it to start position of span in original text.
-                        start_index = span.start_char + m.start()
-                if span:
-                    t = text[start_index:end_index]
-                    result = RecognizerResult(label, start_index, end_index, self.score, analysis_explanation=explanation)
-                    results.append(result)
-        else:
-            # No nlp artifacts provided, cannot process
-            return results
+                    if span:
+                        best_result = RecognizerResult(label, start_index, end_index, self.score,
+                                                       analysis_explanation=explanation)
+                        max_span_length = span_length
+
+            if best_result:
+                results.append(best_result)
 
         return results
