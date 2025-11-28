@@ -20,8 +20,8 @@ from model_version import FINETUNED_MODEL_VERSION
 
 # Training configuration
 TRAINING_CONFIG = {
-    'iterations': 10,
-    'dropout': 0.35,      # Return to best performer
+    'iterations': 1,
+    'dropout': 0.5,      # Return to best performer
     'learn_rate': 0.003,
     'patience': 3,
     'min_improvement': 0.005,
@@ -240,7 +240,7 @@ class SpacyNERTrainer:
             ruler.add_patterns(patterns)
             print(f"  • Added {len(patterns)} patterns for {label}")
 
-        print("Entity Ruler patterns added\n")
+        print("Entity Ruler patterns added to entity_ruler pipeline.\n")
 
 
 def save_model(nlp: spacy.Language, target_path: str = None) -> bool:

@@ -28,4 +28,6 @@ Finished. Iterations: 5000,  error rate: 0.1%, anonymized: 96.74%, partially ano
 
 Custom:
 Finished. Iterations: 5000,  error rate: 0.48%, anonymized: 98.24%, partially anonymized: 1.28%
+Finished. Iterations: 5000,  error rate: 0.32%, anonymized: 97.62%, partially anonymized: 2.06%
+
 """

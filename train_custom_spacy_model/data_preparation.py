@@ -31,13 +31,37 @@ NAME_ENTITY = 'PERSON'
 DATA_CONFIG = {
     'areas_size': 150,
     'streets_size': 975,
-    'names_size': 675,
+    'names_size': 1575, # Improvement 675->1675
     'negative_examples_size': 500,
-    'mixed_person_street': 300,
-    'mixed_person_area': 100,
-    'mixed_triple': 50,
+    'mixed_person_street': 100, # 300 -> 100 improvement
+    'mixed_person_area': 40, # 30 -> 87% f1
 }
 
+#  Training Results:
+#   • Final F1 Score: 55.61%
+#   • Improvement: +4.19%
+#   • Final Precision: 42.63%
+#   • Final Recall: 79.96%
+#
+# Test Results:
+#   • Names Recognition: 69.0%
+#   • Streets Recognition: 98.0%
+#   • Areas Recognition: 98.0%
+#   • Overall Test Score: 88.3%
+# Test Results:
+#   • Names Recognition: 74.0%
+#   • Streets Recognition: 100.0%
+#   • Areas Recognition: 97.0%
+#   • Overall Test Score: 90.3%
+# DATA_CONFIG = {
+#     'areas_size': 150,
+#     'streets_size': 975,
+#     'names_size': 675,
+#     'negative_examples_size': 500,
+#     'mixed_person_street': 300,
+#     'mixed_person_area': 100,
+#     'mixed_triple': 50,
+# }
 
 def validate_entity_alignment(nlp, text: str, entities: List[List]) -> bool:
     """
@@ -662,8 +686,7 @@ class TrainingDataGenerator:
         from training_data import (
             MIXED_PATTERNS_PERSON_STREET,
             MIXED_PATTERNS_PERSON_STREET_EXTENDED,
-            MIXED_PATTERNS_PERSON_AREA,
-            MIXED_PATTERNS_PERSON_STREET_AREA
+            MIXED_PATTERNS_PERSON_AREA
         )
 
         print("\n" + "="*80)
@@ -707,12 +730,6 @@ class TrainingDataGenerator:
                 mixed_person_area_skipped += 1
 
         print(f"  Added {mixed_person_area_count} PERSON + AREA examples (skipped {mixed_person_area_skipped})")
-
-        # PERSON + STREET + AREA examples
-        # NOTE: These patterns have inline suffixes like {area}ssa, so we skip them
-        # to avoid misalignment issues. The patterns would need to be refactored
-        # to separate the base form from the suffix for proper entity tagging.
-        print(f"  Skipped PERSON + STREET + AREA examples (patterns have inline suffixes causing misalignment)")
 
         print(f"  Total mixed context examples: {mixed_person_street_count + mixed_person_area_count}")
         print("="*80 + "\n")

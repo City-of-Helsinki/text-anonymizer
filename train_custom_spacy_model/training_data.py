@@ -859,11 +859,11 @@ MIXED_PATTERNS_PERSON_STREET = [
     "{name} kertoi että kauppa sijaitsi ennen osoitteessa {street} {number}.",
     "Talonmiehenä pidetty {name} on toiminut osoitteessa {street} {number} jo kahdentoista vuoden ajan.",
     # Secondary patterns
-    "{name} mainitsi että {street} {number} rakennus on historiallinen.",
+    "Meille {name} mainitsi että {street} {number} rakennus on historiallinen.",
     "{name} huomautti että {street}n valaistus kaipaa korjausta.",
     "{name} valittaa että {street}n kunto on huono.",
-    "{name} toivoo että {street}lla saisi olla lisää puita.",
-    "{name} sanoo että {street}lla bussin {number} bussipysäkki tarvitsee katoksen.",
+    "Myös {name} toivoo että {street}lla saisi olla lisää puita.",
+    "Haastattelussa {name} sanoo että {street}lla bussin {number} bussipysäkki tarvitsee katoksen.",
 ]
 #sentence_resources
 MIXED_PATTERNS_PERSON_AREA = [
@@ -887,15 +887,19 @@ MIXED_PATTERNS_PERSON_STREET_AREA = [
 # Additional realistic patterns for varied contexts - ONLY patterns with nominative case
 MIXED_PATTERNS_PERSON_STREET_EXTENDED = [
     "Vaikka {street}n kentällä olisi jäätä {name} tulee aina katsomaan onko pelaajia.",
-    "{name} muistaa kun {street} {number} vieressä oli vielä vanha koulu.",
-    "{name} kertoo että {street} {number} kohdalla oli ennen kauppa.",
+    "Opettaja {name} muistaa kun {street} {number} vieressä oli vielä vanha koulu.",
+    "Jo iäkäs {name} kertoo, että {street} {number} kohdalla oli ennen kauppa.",
     "{name} toivoo että {street} {number} vanha puu säilytetään.",
     "{name} on aina ihaillut {street} {number} rakennuksen arkkitehtuuria.",
     "Ennen {street} {number} tontilla oli puutarha, kertoo {name}.",
-    "{name} muistelee että {street} oli hänen koulutiensä.",
-    "{name} totesi että {street}n historiaa pitäisi vaalia.",
+    "Jo 80v {name} muistelee että {street} oli hänen koulutiensä.",
+    "Vähemmän yllättäen {name} totesikin että {street}n historiaa pitäisi vaalia.",
     "{name} kirjoitti että {street} {number} on historiallinen.",
-    "{name} ehdotti että {street} {number} kunnostetaan.",
+    "Eilisen helsingin sanomissa nimimerkki {name} ehdotti että {street} {number} kunnostetaan.",
+    "Kaupunginviskaali {name} kertoi että {street} {number} kauppa suljetaan.",
+    "Haastattelussa {name} mainitsi että {street} tarvitsee korjausta.",
+    "Meidän kylä-lehdessä {name} huomautti että {street} {number} kohdalla on ongelma.",
+    "Päiväkodin ohi kulkenut {name} kehuu, että uusi puisto osoitteessa {street} on hieno.",
 ]
 
 ADVERBS = ['hyvin', 'mukavasti', 'tyylikkäästi', 'oudosti', 'pohdiskellen', 'tuttavallisesti',
