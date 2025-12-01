@@ -246,8 +246,22 @@ It will output evaluation results that are included in this README.
 Evaluation dataset consists of 101 sample sentences.
 
 
-Date: 12.11.2025
+Date: 01.12.2025
 
+
+Evaluation results: 
+
+| Entity   |   precision |   recall |   f1-score |   samples |
+|:---------|------------:|---------:|-----------:|----------:|
+| PERSON   |    0.730769 | 0.926829 |   0.817204 |        41 |
+| DATE     |    0.272727 | 0.8      |   0.40678  |        15 |
+| LOC      |    0.46875  | 0.5      |   0.483871 |        30 |
+| CARDINAL |    0.133333 | 1        |   0.235294 |         4 |
+| GPE      |    0.106061 | 0.875    |   0.189189 |         8 |
+| O        |    0        | 0        |   0        |         3 |
+
+
+Date: 12.11.2025
 
 Evaluation results: 
 
@@ -270,10 +284,22 @@ Evaluation results:
 
 ### Evaluation results from test/evaluation_ensemble.py
 
-Evaluation results
+#### Evaluation results
 
+#### Date: 01.12.2025
 
-Date: 23.04.2024
+Notable changes: 
+- Spacy model fine tuning pipeline refactored. 
+- Improved street name and name confusion.
+- Fixed and improved evaluation and test scripts.
+
+| Test    |   Accuracy |   Missed |   Samples |
+|:--------|-----------:|---------:|----------:|
+| words   |      99.66 |       17 |      5000 |
+| names   |      95.6  |       16 |      5000 |
+| streets |      97.9  |       21 |      1000 |
+
+#### Date: 23.04.2024
 
 | Test    |   Accuracy |   Missed |   Samples |
 |:--------|-----------:|---------:|----------:|

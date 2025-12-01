@@ -17,6 +17,7 @@ class TestStreetPersonConfusion(unittest.TestCase):
     Some streets are named after persons, so some confusion is expected, but we want to
     identify which specific streets and names cause misclassification.
     """
+    verbose = False
 
     def test_street_misclassified_as_person(self):
         """
@@ -230,7 +231,8 @@ class TestStreetPersonConfusion(unittest.TestCase):
                 })
             else:
                 # Print success in debug mode
-                print(f"Success: Both entities detected in: '{anonymized}'")
+                if self.verbose:
+                    print(f"Success: Both entities detected in: '{anonymized}'")
 
         print(f"\nResults for {iterations} mixed context samples:")
         print(f"  - Both entities detected: {iterations - len(issues)} ({((iterations - len(issues))/iterations)*100:.2f}%)")

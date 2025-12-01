@@ -30,7 +30,8 @@ NAME_ENTITY = 'PERSON'
 # Configuration for data generation
 DATA_CONFIG = {
     'areas_size': 150,
-    'streets_size': 975,
+    'streets_size': 275,
+    'streets_size_with_grammatical_variations': 395, # 395 samples
     'names_size': 1575, # Improvement 675->1675
     'negative_examples_size': 500,
     'mixed_person_street': 100, # 300 -> 100 improvement
@@ -417,11 +418,13 @@ class TrainingDataGenerator:
 
         print(f"Generating {DATA_CONFIG['names_size']} sentences with names")
         print(f"Generating {DATA_CONFIG['streets_size']} sentences with streets")
+        print(f"Generating {DATA_CONFIG['streets_size_with_grammatical_variations']} sentences with streets using grammatical variations")
         print(f"Generating {DATA_CONFIG['areas_size']} sentences with areas")
 
         # Generate single-entity examples
         self._generate_name_examples(name_list)
         self._generate_street_examples(street_list)
+        self._generate_street_examples_with_grammatical_variations(DATA_CONFIG['streets_size_with_grammatical_variations'])
         self._generate_area_examples(area_list)
 
         # Generate mixed-context examples
@@ -499,6 +502,42 @@ class TrainingDataGenerator:
                     else:
                         skipped += 1
 
+        if skipped > 0:
+            print(f"  Skipped {skipped} misaligned street examples")
+
+
+    def _generate_street_examples_with_grammatical_variations(self, limit: int):
+        """Generate training examples for street names using pre-inflected data."""
+        from training_data import STREET_DATA_MAP
+
+        skipped = 0
+        generated_count = 0
+
+        # Iterate through each grammatical case (nominative, genitive, etc.)
+        for case_data in STREET_DATA_MAP:
+            streets = case_data["streets"]
+            templates = case_data["templates"]
+
+            if not streets or not templates:
+                continue
+
+            # Create examples by combining each street with a random template from its case
+            for street in streets:
+                # The street is already inflected (e.g., "Kankaankatu", "Kankaanakadulla")
+                sentence, start, end = SentenceGenerator.generate_sentence(street, templates)
+                entities = [[start, end, STREET_ENTITY]]
+
+                example = create_validated_example(self.nlp, sentence, entities)
+                if example:
+                    self.train_data.append(example)
+                    generated_count += 1
+                else:
+                    skipped += 1
+                if generated_count >= limit:
+                    break
+            print(f"- built {len(streets)} street examples for using {len(templates)} templates.")
+
+        print(f"Generated {generated_count} street examples from pre-inflected data.")
         if skipped > 0:
             print(f"  Skipped {skipped} misaligned street examples")
 
@@ -742,10 +781,6 @@ class TrainingDataGenerator:
         negative_examples = list(FALSE_POSITIVES)
         for _ in range(100):
             template = random.choice(NEGATIVE_TEMPLATES)
-            # Extract any suffixes from template placeholders
-            adj_suffix = extract_suffix_from_pattern(template, "adj")
-            adv_suffix = extract_suffix_from_pattern(template, "adv")
-
             sentence = template.format(
                 adj=random.choice(ADJECTIVES),
                 adv=random.choice(ADVERBS)

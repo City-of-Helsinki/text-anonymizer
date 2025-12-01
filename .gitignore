@@ -1,0 +1,6 @@
+/train_custom_spacy_model/logs/
+/venv
+/flask_session
+.github
+/train_custom_spacy_model/training_data.txt
+/train_custom_spacy_model/evaluation_data.txt

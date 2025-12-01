@@ -1346,7 +1346,7 @@ if __name__ == "__main__":
     highest_score = 0
     results = []
     timestamp = datetime.datetime.now().strftime('%Y.%m.%d %H:%M')
-    with open(f"training_{timestamp}.txt", "a") as f:
+    with open(f"logs/training_{timestamp}.txt", "a") as f:
         f.write(f"NAMES: {NAMES_TEST_DATA_SIZE} ")
         f.write(f"STREETS: {STREETS_TEST_DATA_SIZE} ")
         f.write(f"AREAS: {AREAS_TEST_DATA_SIZE} \n")
@@ -1362,7 +1362,7 @@ if __name__ == "__main__":
         stats = "Iterations " + str(i) + ". Test_score: " + str(test_score) + "\n" + eval_results + "\n\n\n"
         results.append(stats)
         # Full report
-        with open(f"training_{timestamp}.txt", "a") as f:
+        with open(f"logs/training_{timestamp}.txt", "a") as f:
             f.write("Training run: " + datetime.datetime.now().strftime('%Y.%m.%d %H:%M') + "\n")
             f.write(stats)
 

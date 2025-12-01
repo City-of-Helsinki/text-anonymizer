@@ -67,9 +67,9 @@ class SpacyNERTrainer:
             recall = scores["ents_r"]
             f1_score = scores["ents_f"]
             print(f"  Overall Metrics:")
-            print(f"     Precision: {precision*100:6.2f}%  (How many detected entities are correct)")
-            print(f"     Recall:    {recall*100:6.2f}%  (How many actual entities were found)")
-            print(f"     F1 Score:  {f1_score*100:6.2f}%  (Balanced measure of both)")
+            print(f"   - Precision: {precision*100:6.2f}%  (How many detected entities are correct)")
+            print(f"   - Recall:    {recall*100:6.2f}%  (How many actual entities were found)")
+            print(f"   - F1 Score:  {f1_score*100:6.2f}%  (Balanced measure of both)")
 
         if verbose and "ents_per_type" in scores:
             per_type = scores["ents_per_type"]
@@ -92,13 +92,13 @@ class SpacyNERTrainer:
         print("STARTING SPACY NER MODEL TRAINING")
         print("="*80)
         print(f"Training Configuration:")
-        print(f"  • Max Iterations: {self.config['iterations']}")
-        print(f"  • Learning Rate: {self.config['learn_rate']}")
-        print(f"  • Dropout: {self.config['dropout']}")
-        print(f"  • Early Stopping Patience: {self.config['patience']}")
-        print(f"  • Min Improvement Threshold: {self.config['min_improvement']}")
-        print(f"  • Total training examples: {len(self.train_data)}")
-        print(f"  • Validation examples: {len(self.eval_data)}")
+        print(f"  - Max Iterations: {self.config['iterations']}")
+        print(f"  - Learning Rate: {self.config['learn_rate']}")
+        print(f"  - Dropout: {self.config['dropout']}")
+        print(f"  - Early Stopping Patience: {self.config['patience']}")
+        print(f"  - Min Improvement Threshold: {self.config['min_improvement']}")
+        print(f"  - Total training examples: {len(self.train_data)}")
+        print(f"  - Validation examples: {len(self.eval_data)}")
         print("="*80 + "\n")
 
         # Baseline evaluation
@@ -238,7 +238,7 @@ class SpacyNERTrainer:
         for label, data_list in patterns_data.items():
             patterns = [{'pattern': item, 'label': label} for item in data_list]
             ruler.add_patterns(patterns)
-            print(f"  • Added {len(patterns)} patterns for {label}")
+            print(f"  - Added {len(patterns)} patterns for {label}")
 
         print("Entity Ruler patterns added to entity_ruler pipeline.\n")
 

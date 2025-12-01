@@ -182,7 +182,7 @@ def log_results(
     eval_scores: dict
 ):
     """Log training results to file"""
-    log_filename = f"training_{timestamp.replace(':', '.')}.txt"
+    log_filename = f"logs/training_{timestamp.replace(':', '.')}.txt"
 
     with open(log_filename, "w") as f:
         f.write("="*80 + "\n")

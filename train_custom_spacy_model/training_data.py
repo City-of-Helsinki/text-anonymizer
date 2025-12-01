@@ -1,3 +1,5 @@
+import random
+
 STREET_ENTITY = 'LOC'
 AREA_ENTITY = 'GPE'
 NAME_ENTITY = 'PERSON'
@@ -359,6 +361,246 @@ SENTENCES_NAME = [
 # Sentences specifically for streets with placeholder {s} for street names
 # Try to cover a variety of contexts where street names might appear, especially in reports, complaints, or general statements.
 
+# Helper function to format sentences with pre-inflected street names and position info
+def format_sentences(templates, streets, max_sentences=None):
+    sentences = []
+    for street in streets:
+        for template in templates:
+            # The street name is already inflected, so we just format it in.
+            # The template placeholder is now just {s}.
+            start = template.index("{")
+            end = start + len(street)
+            sentences.append((template.format(s=street), start, end))
+
+    if max_sentences is not None and len(sentences) > max_sentences:
+        return random.sample(sentences, max_sentences)
+
+    return sentences
+
+# --- Pre-inflected street names for each grammatical case ---
+
+# 1. Nominatiivi (perusmuoto)
+STREETS_NOMINATIVE = [
+    "Töölönlahdenkatu", "Rohkatie", "Huntupolku", "Oppipojantie", "Akseli", "Messipojankuja", "Nattastenpolku",
+    "Malmin raitti", "Toukolankatu", "Prammikuja", "Marielundinaukio", "Rekitie", "Sorsavuorenrinne",
+    "Jakokunnantie", "Saramäentie", "Katajanokanluoto", "Fredrikinkatu", "Lämmittäjänkuja", "Parivaljakontie",
+    "Linnankoskenkatu", "Antti Mäen kuja", "Kirsikkatie", "Limonadikuja", "Lallukantie", "Lallukankuja",
+    "Savikiekontie", "Ritokallionpolku", "Metsäpurontie", "N. A. Osaran kuja", "Ylätuvantie", "Meijeritie",
+    "Vilhonvuorenkatu", "Lehdesniityntie", "Aittatie", "Mäkipellonkuja", "Tuomarinkyläntie", "Mirjaminkatu",
+    "Perkkaantie", "Pallomäenrinne", "Puotilan metrotori", "Ruskontie", "Paasikivenkatu", "Kylänevantie",
+    "Olkilyhteentie", "Laukkipäänpolku", "Hopeasalmenranta", "Malmin kauppatie", "Linnanpihantie", "Savonkatu",
+    "Kellarimäentie", "Karavaanisilta", "Maatullinkuja", "Miilumäenkuja", "Agronominkatu", "Vasaratie",
+    "Västäräkintie", "Töyrynummentie", "Pronssitie", "Maistraatinkatu", "Korvatunturintori", "Laidunpolku",
+    "Airoranta", "Solakallionkuja", "Ehrenströmintie", "Laajasuonaukio", "Alppikatu", "Hankaintie",
+    "Ensi-Kodin tie", "Asteritie", "Kuovipolku", "Ripetie", "Kukkulatie", "Pajalahdentie"
+]
+NOMINATIVE_TEMPLATES = [
+    'Osoitteeni on {s} 1, 00100 Helsinki.',
+    'Vastaanottaja: Nimi Henkilön, {s} 10 Helsinki.',
+    'Seuraava katu on {s}.',
+    '{s} on yksi kaupungin vilkkaimmista väylistä.',
+]
+
+# 2. Genetiivi (-n)
+STREETS_GENITIVE = [
+    "Kuovipolun", "Ripetien", "Kukkulatien", "Pajalahdentien", "Takkatien", "Lokipolun", "Välimetsänkujan",
+    "Korsnäsin Huvilakujan", "Osmonkujan", "Messitytönkadun", "Minervankadun", "Saunapellonpolun", "Hollolantien",
+    "Siltavoudinkujan", "Gunillankujan", "Rukoushuoneentien", "Piilukkokujan", "Korsipolun", "Soihtukujan",
+    "Lampipolun", "Kreijarinkujan", "Mikroskooppikujan", "Perustien", "Kontulankujan", "Kaivokadun",                                                                     "Kivenhakkaajantien",
+    "Priki Johannan kujan", "Metsätien", "Rakennusmestarintien", "Maunulanmäen",
+    "Skutholminkaaren", "Kotipolun", "Kaasutehtaankadun", "Lintulahdenkujan", "Ruoritien", "Kaj Franckin kadun"
+
+]
+
+GENITIVE_TEMPLATES = [
+    'Asun {s} varrella.',
+    'Pyöräilin {s} päästä päähän.',
+    '{s} asukkaat valittivat melusta.',
+    'Tapahtuma järjestetään {s} kulmassa.',
+    'Korjaustyöt aloitetaan {s} alueella.',
+    'Valot olivat sammuneet koko {s} pituudelta.',
+    'Ajoimme {s} läpi matkalla kotiin.',
+    'Puisto sijaitsee {s} vieressä.',
+    'Rakennustyömaa on {s} ja naapurikadun risteyksessä.',
+    'Hän asuu {s} numerossa 5.',
+    'Koko {s} pituudelta oli istutettu uusia puita.',
+    'Onko tämä {s} alku?',
+    'Pysäköinti on kielletty {s} toisella puolella.',
+    'Lapset leikkivät {s} leikkipuistossa.',
+    'Näin kolarin {s} ja Kauppakadun risteyksessä.',
+]
+
+# 3. Partitiivi (-a, -ä)
+STREETS_PARTITIVE = [
+    "Korsipolkua", "Soihtukujaa", "Lampipolkua", "Kreijarinkujaa", "Mikroskooppikujaa", "Perustietä", "Kontulankujaa",
+    "Kaivokatua", "Tiistellinginpolkua", "Lielahdentietä", "Riveliniemenpolkua", "Lapinlahdenkatua",
+    "Harmaapaadentietä", "Pituuspiiriä", "Rouvienpolkua", "Kivijatapolkua", "Telekatua", "Simsiönkujaa",
+    "Beckerintietä", "Parrukatua", "Pääskylänkatua", "Teininkujaa", "Kustaa Vaasan tietä", "Huovitietä",
+    "Vaskipellonpolkua", "Linnanpellonkujaa", "Oskelan aukiota", "Kylävoudinkujaa", "Hernesaarenrantaa",
+    "Hauhontietä", "Korsutietä", "Kolistimenpolkua", "Maakujaa", "Tukkikujaa", "Rakuunantietä", "Saranakujaa",
+    "Kotitorpantietä", "Sven Grahnin polkua", "Puistolantoria", "Jarrumiehenkatua", "Liukumäentietä", "Keijontietä",
+    "Kaanaanpihaa", "Kuuluttajankujaa", "Vegankatua", "Kröckelinkujaa", "Salmisaarenrantaa", "Katsastustietä",
+    "Jaakonkatua", "Oskarinkujaa", "Mesipuuta", "Vehkalahdenkujaa", "Pyötsaarenkujaa", "Pohjoisloistoa",
+    "Kivihaankujaa", "Helatehtaankatua", "Kytöniityntietä", "Klaneettitietä", "Nastolantietä", "Salavakujaa",
+    "Tuurholmanpolkua", "Tallbergin puistotietä", "Tenavatietä", "Joonaksenkujaa", "Mesenaatintietä", "Kämnerintietä",
+    "Puustellintietä", "Osuuskunnantietä", "Juhtatietä", "Kaupinmäenpolkua", "Vilkmanintietä", "Agnetankujaa",
+    "Sädekujaa", "Markelininpolkua", "Pikkusuonkujaa", "Lääkärinkatua", "Muuttolinnunkujaa", "Aurinkokujaa",
+    "Liikepolkua", "Merenkulkijankatua", "Polariksenkatua"
+]
+
+PARTITIVE_TEMPLATES = [
+    '{s} pitkin on mukava kävellä.',
+    'Bussi numero 5 kulkee {s} pitkin.',
+    'En löydä {s} kartalta.',
+    'Ajoin {s} kohti keskustaa.',
+    'Vältä {s}, siellä on tietyö.',
+    'He korjaavat parhaillaan {s}.',
+    'Etsin {s} Google Mapsista mutta sitä ei löytynyt.',
+    'Poliisi valvoi {s} tehostetusti.',
+    'Suunnitelmassa ehdotetaan {s} muuttamista kävelykaduksi.',
+    'En ole koskaan kuullutkaan {s}.',
+    'Katselin {s} ja sen vanhoja rakennuksia.',
+    'Rakennustyöt koskevat myös {s}.',
+    'Hän valokuvasi {s} aamunkoitteessa.',
+    'Mietin, mitä {s} varrella on.',
+    'Emme suosittele ajamaan {s} ruuhka-aikaan.',
+]
+
+# 4. Adessiivi (-lla, -llä)
+STREETS_ADESSIVE = [
+    "Muuttolinnunkujalla", "Aurinkokujalla", "Liikepolulla", "Merenkulkijankadulla", "Polariksenkadulla",
+    "Retkeilijänkadulla", "Samoilijanpolulla", "Paloluodolla", "Hietaniitynpolulla", "Annankadulla",
+    "Metsäläntiellä", "Pannipolulla", "Tukkitiellä", "Valtimontiellä", "Käärmeniementiellä", "Ilotulitustiellä",
+    "Kalannintiellä", "Hopeasalmenpolulla", "Kauppurinpolulla", "Kaisaniemen puistokujalla", "Ylä-Fallin polulla",
+    "Tykistönkadulla", "Käätypolulla", "Laukkaniementiellä", "Askarkujalla", "Isonniitynkadulla", "Jokipolulla",
+    "Wallininkadulla", "Antareksen kadulla", "Hakamäenkujalla", "Simppukarinkadulla", "Sorvaajankadulla",
+    "Louhikkotiellä", "Lehtisaarentiellä", "Malkapolulla", "Pakinkujalla", "Mäkikallionpihalla", "Punatulkuntiellä",
+    "Harjutorinkadulla", "Maksaruohonpolulla", "Neitojenpolulla", "Taivaanvuohentiellä", "Sillilaiturilla",
+    "Kehräkujalla", "Hiidenmaankadulla", "Bertha Pauligin kadulla", "Ruutikujalla", "Arttolankujalla",
+    "Heinäsarankaarella", "Viulupolulla", "Simakujalla", "Orakkaalla", "Kärppäkujalla", "Yhteiskouluntiellä",
+    "Selim Lindqvistin kujalla", "Rintinpolulla", "Saavikujalla", "Karviaismäenkujalla", "Bulevardilla",
+    "Yrjönkadulla", "Korkeakoskenkujalla", "Vormsilla", "Furuvikintiellä", "Hernepellontiellä", "Lepolantiellä",
+    "Huokotiellä", "Heinäsuontiellä", "Reposalmenpolulla", "Kirvelikujalla", "Purpuripolulla", "Junonkadulla",
+    "Sepänkadulla", "Porintiellä", "Veneentekijänkujalla", "Kallvikinkujalla"
+]
+
+ADESSIVE_TEMPLATES = [
+    'Pyörätie on tukossa {s}.',
+    'Lapset leikkivät {s} myöhään iltaan.',
+    'Poliisi pysäytti liikenteen {s}.',
+    'Asun {s}.',
+    'Tapahtui onnettomuus {s}.',
+    '{s} on tietyömaa.',
+    'Näin oudon miehen {s}.',
+    'Auto oli pysäköity {s}.',
+    'Järjestetään katujuhlat {s}.',
+    'Katuvalot eivät toimi {s}.',
+    '{s} on paljon liikennettä.',
+    'Ravintola sijaitsee {s}.',
+    'Melu {s} oli sietämätön.',
+    'Kävelin {s} ja katselin näyteikkunoita.',
+    'Pidetäänkö kirpputori {s}?',
+    'Bussipysäkki {s} on siirretty.',
+    'Oli ruuhkaa {s} aamulla.',
+    'Poliisipartio päivysti {s}.',
+]
+
+
+# 5. Ablatiivi (-lta, -ltä)
+STREETS_ABLATIVE = [
+    "Junonkadulta", "Sepänkadulta", "Porintieltä", "Veneentekijänkujalta", "Kallvikinkujalta", "Herastuomarintieltä",
+    "Kuiskaajanpolulta", "Rysäkarilta", "Hiekkalaiturinraitilta", "Riimukujalta", "Vitsaspolulta", "Areenankujalta",
+    "Varhelantieltä", "Jollaksentieltä", "Punamäeltä", "Tiilipolulta", "Energiakujalta", "Puronvarrelta",
+    "Lintulahdenkadulta", "Rantatöyryltä", "Hakaniemen metrotunnelilta", "Haukkakadulta", "Tilhitieltä",
+    "Vanhanlinnantieltä", "Runonlaulajantieltä", "Tattarisuontieltä", "Askolantieltä", "Haapsalunkujalta",
+    "Silkkitieltä", "Neitsytsaarentieltä", "Pukinkujalta", "Säkyläntieltä", "Roihuvuorentieltä",
+    "Katajamäentieltä", "Läntiseltä Papinkadulta", "Vislauskujalta", "Hopeatieltä", "Kuhilaspolulta",
+    "Linjakepiltä", "Haravakujalta", "Pengerkujalta", "Ristikkotieltä", "Arabianmäenpolulta",
+    "Tapaninvainiontieltä", "Schildtinpolulta", "Säästöpankinrannalta", "Myrttitieltä", "Kaitalahdentieltä",
+    "Rasmuksenkujalta", "Lehtikuusentieltä", "Liekopolulta", "Marunakujalta", "Savilankadulta",
+    "Talonpojantieltä", "Itäpolulta", "Kiitäjänkujalta", "Varpustieltä", "Sibeliuksenkadulta",
+    "Pihlajistonkujalta", "Mikael Lybeckin kadulta", "Vanamotieltä", "Sulkapolulta", "Kisällinkujalta",
+    "Perttulantieltä", "Porttirinteenpolulta", "Tarkk'ampujankadulta", "Palmsenpolulta", "Vemmelkujalta",
+    "Kivenhakkaajantieltä", "Priki Johannan kujalta", "Metsätieltä", "Rakennusmestarintieltä", "Maunulanmäeltä",
+    "Skutholminkaarelta", "Kotipolulta", "Kaasutehtaankadulta", "Lintulahdenkujalta", "Ruoritieltä",
+    "Kaj Franckin kadulta", "Ratamestarinkadulta", "Helminkadulta"
+]
+
+ABLATIVE_TEMPLATES = [
+    'Roska-astiat tulisi tyhjentää {s}.',
+    'Löysin lompakon {s}.',
+    'Näkymä {s} on upea.',
+    'Lähdimme {s} ja suuntasimme pohjoiseen.',
+    'Melu kantautui {s} asti.',
+    'Hän muutti pois {s} viime vuonna.',
+    'Matka {s} rautatieasemalle on lyhyt.',
+    'Vesi katkaistiin koko {s}.',
+    'Käänny pois {s} seuraavasta risteyksestä.',
+    'Sain hyvän tarjouksen {s} sijaitsevasta liikkeestä.',
+    'Poistuimme rakennuksesta {s}.',
+    'Kuulin laukauksen {s} suunnalta.',
+    'Pääsee nopeasti pois {s}.',
+    'Hän palasi juuri matkalta {s}.',
+    'Siirrä auto pois {s}.',
+]
+
+# 6. Allatiivi (-lle)
+STREETS_ALLATIVE = [
+    "Lintulahdenkujalle", "Ruoritielle", "Kaj Franckin kadulle", "Ratamestarinkadulle", "Helminkadulle",
+    "Korsnäsintielle", "Ruonasalmentielle", "Mustanniemenkujalle", "Puijonkadulle", "Laulurastaankujalle",
+    "Kauppakartanonkadulle", "Isolle Puistotielle", "Nahkahousuntielle", "Kartanon puistotielle", "Sienikujalle",
+    "Tietokujalle", "Perkiöntielle", "Nikonkujalle", "Ensi parvelle", "Hirsipadontielle", "Karhurannankujalle",
+    "Malminkaarelle", "Pitkänsiimantielle", "Reijolalle", "Alppikylänkadulle", "Erik Lönnrothin kujalle",
+    "Haperolle", "Hiidenkiventielle", "Pohjoiselle Hesperiankadulle", "Mustanhalssinkujalle", "Violankujalle",
+    "Mäkikurpankujalle", "Petter Wetterin tielle", "Latokartanonkujalle", "Käpylinnuntielle", "Sarvastonrinteelle",
+    "Aurinkomäentielle", "Meteorikujalle", "Ukkotuomarinkujalle", "Kauppalankujalle", "Lasarettikujalle",
+    "Tammisaarenkadulle", "Töölönlahdenkadulle", "Rohkatielle", "Huntupolulle", "Oppipojantielle", "Akselille",
+    "Messipojankujalle", "Nattastenpolulle"
+]
+
+ALLATIVE_TEMPLATES = [
+    'Käänny seuraavasta risteyksestä {s}.',
+    'Suunnittelemme muuttoa {s}.',
+    'Paketti toimitettiin {s}.',
+    'Ambulanssi kiirehti {s}.',
+    'Poliisi saapui {s} tutkimaan tapausta.',
+    'Uusi ravintola avataan {s} ensi kuussa.',
+    'Ohjeet navigoivat minut {s}.',
+    'Posti ei löytänyt perille {s}.',
+    'Tilaa taksi osoitteeseen {s} 5.',
+    'Kokous on siirretty {s} sijaitsevaan toimistoon.',
+    'He rakentavat uuden talon {s}.',
+    'Anna tarkat ajo-ohjeet {s}.',
+    'Lähetin kirjeen {s} asuvalle ystävälleni.',
+    'Palokunta hälytettiin {s}.',
+    'Suunnista {s} ja jatka suoraan.',
+    'Tervetuloa {s}!',
+    'Muuttofirman auto saapui {s}.',
+    'Kaikki tiet vievät {s}.',
+]
+
+
+# Combine all generated sentences into the final list
+TRAINING_DATA_STREETS = (
+    format_sentences(NOMINATIVE_TEMPLATES, STREETS_NOMINATIVE, max_sentences=100) +
+    format_sentences(GENITIVE_TEMPLATES, STREETS_GENITIVE, max_sentences=100) +
+    format_sentences(PARTITIVE_TEMPLATES, STREETS_PARTITIVE, max_sentences=100) +
+    format_sentences(ADESSIVE_TEMPLATES, STREETS_ADESSIVE, max_sentences=100) +
+    format_sentences(ABLATIVE_TEMPLATES, STREETS_ABLATIVE, max_sentences=100) +
+    format_sentences(ALLATIVE_TEMPLATES, STREETS_ALLATIVE, max_sentences=100)
+)
+
+# This map structure associates each list of inflected street names
+# with its corresponding list of sentence templates.
+STREET_DATA_MAP = [
+    {"streets": STREETS_NOMINATIVE, "templates": NOMINATIVE_TEMPLATES},
+    {"streets": STREETS_GENITIVE, "templates": GENITIVE_TEMPLATES},
+    {"streets": STREETS_PARTITIVE, "templates": PARTITIVE_TEMPLATES},
+    {"streets": STREETS_ADESSIVE, "templates": ADESSIVE_TEMPLATES},
+    {"streets": STREETS_ABLATIVE, "templates": ABLATIVE_TEMPLATES},
+    {"streets": STREETS_ALLATIVE, "templates": ALLATIVE_TEMPLATES},
+]
+
 SENTENCES_STREETS = [
     'Toivotaan energiahuoltoa {s} 6 sähköt roikkuu sähkölinjalla.',
     'Osoitteessa {s} tien puolella on kivi.',
@@ -466,6 +708,7 @@ SENTENCES_STREETS = [
     'Olisiko {s} 44:ään mahdollista saada lisää katuvalaisimia, varsinkin talvikuukausina?',
     'Kiitos, että {s} 30:n alueen puistot ovat pidetty siistinä ja turvallisina.',
 ]
+
 #sentence_resources
 SENTENCES_AREAS = [
     '{s} alueen kehittäminen pitäisi olla etusijalla.',
