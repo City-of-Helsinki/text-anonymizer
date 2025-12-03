@@ -4,3 +4,4 @@
 .github
 /train_custom_spacy_model/training_data.txt
 /train_custom_spacy_model/evaluation_data.txt
+/scripts/run_container.sh
