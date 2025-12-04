@@ -1,271 +1,17 @@
-import csv
-import datetime
-import itertools
-import os
 import random
-
-import spacy
-from spacy.training import Example
-from spacy.util import minibatch, compounding
-
-from evaluation import evaluate_nlp
-
-print("Starting fine tuning of spacy model for Finnish names, helsinki streets and areas")
-
-AREAS_TEST_DATA_SIZE = 175
-STREETS_TEST_DATA_SIZE = 500
-NAMES_TEST_DATA_SIZE = 500
-
-
-exec_ner = True
-exec_test = True
-exec_ruler = True
-save_model = True
-
-# Use fixed seed so training will always be the same
-random.seed(1234)
 
 STREET_ENTITY = 'LOC'
 AREA_ENTITY = 'GPE'
 NAME_ENTITY = 'PERSON'
 
-base_model = "fi_core_news_lg"
-nlp = spacy.load(base_model)
-target_path = "../custom_spacy_model/fi_datahel_spacy-0.0.3"
 
-this_dir, this_filename = os.path.split(__file__)
-
-_FIRST_NAMES_FILE_PATH = "../test/data/etunimet.csv"
-_FIRST_NAMES_DATA_FILE = os.path.join(this_dir, _FIRST_NAMES_FILE_PATH)
-_FIRST_NAMES = []
-
-_LAST_NAMES_FILE_PATH = "../test/data/sukunimet.csv"
-_LAST_NAMES_DATA_FILE = os.path.join(this_dir, _LAST_NAMES_FILE_PATH)
-_LAST_NAMES = []
-
-_STREETS_FILE_PATH = "../test/data/helsinki_kadunnimet.txt"
-_STREETS_DATA_FILE = os.path.join(this_dir, _STREETS_FILE_PATH)
-_STREETS = []
-
-_AREAS_FILE_PATH = "../test/data/helsinki_alueet.txt"
-_AREAS_DATA_FILE = os.path.join(this_dir, _AREAS_FILE_PATH)
-_AREAS = []
-
-_PRODUCTS_FILE_PATH = "../test/data/tuotenimet.txt"
-_PRODUCTS_DATA_FILE = os.path.join(this_dir, _PRODUCTS_FILE_PATH)
-_PRODUCTS = []
-
-_ORGANIZATIONS_FILE_PATH = "../test/data/organisaatiot.txt"
-_ORGANIZATIONS_DATA_FILE = os.path.join(this_dir, _ORGANIZATIONS_FILE_PATH)
-_ORGANIZATIONS = []
-
-_SKIP_FILE_PATH = "../test/data/ohitettavat.txt"
-_SKIP_DATA_FILE = os.path.join(this_dir, _ORGANIZATIONS_FILE_PATH)
-_SKIP = []
-
-with open(_LAST_NAMES_DATA_FILE, 'r') as data:
-    for line in csv.reader(data, delimiter=';'):
-        _LAST_NAMES.append(line[0])
-        # take top 2000 last names
-        if len(_LAST_NAMES) >= 2000:
-            break
-
-with open(_FIRST_NAMES_DATA_FILE, 'r') as data:
-    for line in csv.reader(data, delimiter=';'):
-        _FIRST_NAMES.append(line[0] if random.randint(1, 3) > 1 else line[0].lower())
-        # take top 2000 first names
-        if len(_FIRST_NAMES) >= 2000:
-            break
-
-with open(_STREETS_DATA_FILE, 'r') as data:
-    for line in csv.reader(data, delimiter=';'):
-        _STREETS.append(line[0] if random.randint(1, 3) == 1 else line[0].lower())
-        # take top 1000 street names
-        # if len(_STREETS) >= 1000:
-        #     break
-
-with open(_AREAS_DATA_FILE, 'r') as data:
-    for line in csv.reader(data, delimiter=';'):
-        _AREAS.append(line[0] if random.randint(1, 3) == 1 else line[0].lower())
-        # take top 200 area names
-        # if len(_AREAS) >= 200:
-        #     break
-
-with open(_ORGANIZATIONS_FILE_PATH, 'r') as data:
-    for line in csv.reader(data, delimiter=';'):
-        _ORGANIZATIONS.append(line[0] if random.randint(1, 3) == 1 else line[0].lower())
-
-with open(_PRODUCTS_DATA_FILE, 'r') as data:
-    for line in csv.reader(data, delimiter=';'):
-        _PRODUCTS.append(line[0] if random.randint(1, 3) == 1 else line[0].lower())
-
-
-def augment_sentence(sentence, entity_text, entity_type):
-    """Create variations of training sentences to improve robustness"""
-    variations = []
-
-    # Add punctuation variations
-    if not sentence.endswith(('.', '!', '?')):
-        variations.append((sentence + '.', entity_text))
-        variations.append((sentence + '!', entity_text))
-
-    # Add case variations for names (sometimes people write in different cases)
-    if entity_type == NAME_ENTITY and len(variations) < 2:
-        # Already at limit, just return what we have
-        pass
-
-    return variations[:2]  # Limit to avoid too much data
-
-
-def generate_sentence(person, list):
-    sent = ""
-    try:
-        sent = random.choice(list)
-        if '{s}' in sent:
-            sent = sent.replace('{s}', person)
-        if '{adj}' in sent:
-            sent = sent.replace('{adj}', random.choice(ADJECTIVES))
-        if '{adv}' in sent:
-            sent = sent.replace('{adv}', random.choice(ADVERBS))
-
-        s = sent.index(person)
-        e = s + len(person)
-        return sent, s, e
-    except ValueError:
-        print("Error: ", sent, person)
-        return generate_sentence(person, list)
-
-def generate_evaluation_sentence(value, sentence):
-    sent = sentence.format(s=value)
-    s = sent.index(value)
-    e = s + len(value)
-    return sent, s, e
-
-
-def generate_full_names(amount=1):
-    full_names = []
-    for a in range(amount):
-        random_first_name = random.choice(_FIRST_NAMES)
-        # Add 2 first names sometimes
-        if random.randint(1, 50) == 1:
-            random_first_name += ' ' + random.choice(_FIRST_NAMES)
-        elif random.randint(1, 50) == 2:
-            random_first_name += '-' + random.choice(_FIRST_NAMES)
-
-
-        # two part names
-        random_last_name = random.choice(_LAST_NAMES)
-        if random.randint(1, 50) == 3:
-            random_last_name += '-' + random.choice(_LAST_NAMES)
-
-        if random.randint(1, 50) == 4:
-            random_name = random_last_name
-        elif random.randint(1, 50) == 5:
-            random_name = random_first_name
-        else:
-            random_name = random_first_name + ' ' + random_last_name
-        full_names.append(random_name)
-    return full_names
-
-
-def test_text() -> bool:
-    amount = 2
-    names = generate_full_names(amount)
-    names_flattened = list(itertools.chain.from_iterable([a.split(' ') for a in names]))
-
-    # test_text = build_random_sentence(names)
-    test_text = "Tämä on keksitty lause jolla testataan miten hyvin erilaiset nimet tunnistetaan anonymisoitavaksi. " \
-                "Ala-asteen opettaja {name2} antoi pojalle uuden kumin ja kynän. Tästä tuli kaikille hyvä mieli." \
-                "Päivä paistaa ja linnut laulaa, se on todella mukava asia! " \
-                "Kiitos! Terkuin oppilaan vanhempi {name1}. ".format(name1=names[0], name2=names[1])
-    doc = nlp(test_text)
-    correct_label = 0
-    for ent in doc.ents:
-        entity_str = str(ent).replace('\\.', '')
-        if ent.label_ == NAME_ENTITY and entity_str in names:
-            correct_label += 1
-        elif ent.label_ == NAME_ENTITY and entity_str in names_flattened:
-            correct_label += 0.5
-        elif ent.label_ == NAME_ENTITY:
-            # print("Incorrect: ", ent, ent.label_)
-            pass
-    return correct_label >= amount and amount < correct_label + 1
-
-def build_random_sentence(names: list[str]) -> str:
-    s1 = generate_sentence(names[0], EVALUATION_SENTENCES)
-    s2 = generate_sentence(names[1], EVALUATION_SENTENCES)
-    return s1[0] + " " + s2[0]
-
-def test_areas() -> bool:
-    amount = 2
-    area1 = random.choice(_AREAS)
-    area2 = random.choice(_AREAS)
-    test_text = "Tämä on keksitty lause jolla testataan miten hyvin erilaiset nimet tunnistetaan anonymisoitavaksi. " \
-                "{area1} on loistava alue! Ala-asteen opettaja antoi pojalle uuden kumin ja kynän. Tästä tuli kaikille hyvä mieli." \
-                "Päivä paistaa ja linnut laulaa, se on todella mukava asia! " \
-                "Kiitos! {area2} on mukava paikka asua. ".format(area1=area1, area2=area2)
-    doc = nlp(test_text)
-    correct_label = 0
-    for ent in doc.ents:
-        if str(ent.label_) in [AREA_ENTITY, STREET_ENTITY] and str(ent) in _AREAS:
-            correct_label += 1
-        elif str(ent) in _AREAS:
-            print("Incorrect: ", ent, ent.label_)
-    return correct_label == amount
-
-
-def test_streets() -> bool:
-    amount = 2
-    street1 = random.choice(_STREETS)
-    street2 = random.choice(_STREETS)
-    test_text = "Tämä on keksitty lause jolla testataan miten hyvin erilaiset katujen nimet tunnistetaan anonymisoitavaksi. " \
-                "Osoitteessa {street1} 17 A 1 on puu, joka tarvitsee apua. " \
-                "Olipa hieno taideteos myös! Terveisin, asukas kadulta {street2}.".format(street1=street1,
-                                                                                          street2=street2)
-    doc = nlp(test_text)
-    correct_label = 0
-    for ent in doc.ents:
-        if str(ent.label_) in [AREA_ENTITY, STREET_ENTITY, 'STREET'] and str(ent) in _STREETS:
-            correct_label += 1
-        elif str(ent) in _STREETS:
-            print("Incorrect: ", ent, ent.label_)
-    return correct_label == amount
-
-
-def run_test(amount=50):
-    results1 = []
-    for i in range(amount):
-        results1.append(test_text())
-        results1.append(test_areas())
-        results1.append(test_streets())
-    p = results1.count(True) / (amount * 3) * 100
-    print("Test coverage %", p)
-    return p
-
-
-def build_patterns(data, label):
-    print(f"Build {len(data)} patterns for  {label}")
-    patterns = []
-    for s in data:
-        patterns.append({'pattern': s, 'label': label})
-    return patterns
-
-ADVERBS = ['hyvin', 'mukavasti', 'tyylikkäästi', 'oudosti', 'pohdiskellen', 'tuttavallisesti']
-ADJECTIVES = ['hieno', 'mukava', 'tyylikäs', 'outo', 'pohdiskeleva', 'tuttavallinen', 'kiva', 'hauska', 'kummallinen', 'mielenkiintoinen', 'kaunis']
-
-
-
-print("Building test data for training")
-# areas
-print(f"Generating {AREAS_TEST_DATA_SIZE} sentences with areas")
-print(f"Generating {STREETS_TEST_DATA_SIZE} sentences with streets")
-print(f"Generating {NAMES_TEST_DATA_SIZE} sentences with names")
-
-AREA_LIST = random.sample(_AREAS, AREAS_TEST_DATA_SIZE)
-STREET_LIST = random.sample(_STREETS, STREETS_TEST_DATA_SIZE)
-NAME_LIST = generate_full_names(NAMES_TEST_DATA_SIZE)
-TRAIN_DATA = []
+# Here you can add more sentence templates as needed, insert {s} where the name should go
+# Sentences can have typos and can be grammatically incorrect to simulate real-world data
+# More is more as the model needs to generalize well, so add plenty of variations
 SENTENCES_NAME = [
+    'Maisa-järjestelmässä on kirjautumisongelmia, kertoi ATK-tukihenkilö {s}.',
+    'Emme ole voineet kirjautua Maisaan vaikka it-tuen {s} neuvoi miten se tehdään.',
+    'Maisa on Apotti-järjestelmän asiakasportaali, joka yhdistää sosiaalihuollon ja terveydenhuollon sähköisen asioinnin yhteen kanavaan kertoi HUS:n edustaja {s}.',
     '{s} on hyvä tyyppi.',
     '{s} on suomalainen miehen etunimi.',
     '{s} vakiintui Suomessa nimimuotona jo keskiajalla.',
@@ -611,6 +357,250 @@ SENTENCES_NAME = [
     'Johtaja {s} kritisoi uutta lakia.'
 ]
 
+
+# Sentences specifically for streets with placeholder {s} for street names
+# Try to cover a variety of contexts where street names might appear, especially in reports, complaints, or general statements.
+
+# Helper function to format sentences with pre-inflected street names and position info
+def format_sentences(templates, streets, max_sentences=None):
+    sentences = []
+    for street in streets:
+        for template in templates:
+            # The street name is already inflected, so we just format it in.
+            # The template placeholder is now just {s}.
+            start = template.index("{")
+            end = start + len(street)
+            sentences.append((template.format(s=street), start, end))
+
+    if max_sentences is not None and len(sentences) > max_sentences:
+        return random.sample(sentences, max_sentences)
+
+    return sentences
+
+# --- Pre-inflected street names for each grammatical case ---
+
+# 1. Nominatiivi (perusmuoto)
+STREETS_NOMINATIVE = [
+    "Töölönlahdenkatu", "Rohkatie", "Huntupolku", "Oppipojantie", "Akseli", "Messipojankuja", "Nattastenpolku",
+    "Malmin raitti", "Toukolankatu", "Prammikuja", "Marielundinaukio", "Rekitie", "Sorsavuorenrinne",
+    "Jakokunnantie", "Saramäentie", "Katajanokanluoto", "Fredrikinkatu", "Lämmittäjänkuja", "Parivaljakontie",
+    "Linnankoskenkatu", "Antti Mäen kuja", "Kirsikkatie", "Limonadikuja", "Lallukantie", "Lallukankuja",
+    "Savikiekontie", "Ritokallionpolku", "Metsäpurontie", "N. A. Osaran kuja", "Ylätuvantie", "Meijeritie",
+    "Vilhonvuorenkatu", "Lehdesniityntie", "Aittatie", "Mäkipellonkuja", "Tuomarinkyläntie", "Mirjaminkatu",
+    "Perkkaantie", "Pallomäenrinne", "Puotilan metrotori", "Ruskontie", "Paasikivenkatu", "Kylänevantie",
+    "Olkilyhteentie", "Laukkipäänpolku", "Hopeasalmenranta", "Malmin kauppatie", "Linnanpihantie", "Savonkatu",
+    "Kellarimäentie", "Karavaanisilta", "Maatullinkuja", "Miilumäenkuja", "Agronominkatu", "Vasaratie",
+    "Västäräkintie", "Töyrynummentie", "Pronssitie", "Maistraatinkatu", "Korvatunturintori", "Laidunpolku",
+    "Airoranta", "Solakallionkuja", "Ehrenströmintie", "Laajasuonaukio", "Alppikatu", "Hankaintie",
+    "Ensi-Kodin tie", "Asteritie", "Kuovipolku", "Ripetie", "Kukkulatie", "Pajalahdentie"
+]
+NOMINATIVE_TEMPLATES = [
+    'Osoitteeni on {s} 1, 00100 Helsinki.',
+    'Vastaanottaja: Nimi Henkilön, {s} 10 Helsinki.',
+    'Seuraava katu on {s}.',
+    '{s} on yksi kaupungin vilkkaimmista väylistä.',
+]
+
+# 2. Genetiivi (-n)
+STREETS_GENITIVE = [
+    "Kuovipolun", "Ripetien", "Kukkulatien", "Pajalahdentien", "Takkatien", "Lokipolun", "Välimetsänkujan",
+    "Korsnäsin Huvilakujan", "Osmonkujan", "Messitytönkadun", "Minervankadun", "Saunapellonpolun", "Hollolantien",
+    "Siltavoudinkujan", "Gunillankujan", "Rukoushuoneentien", "Piilukkokujan", "Korsipolun", "Soihtukujan",
+    "Lampipolun", "Kreijarinkujan", "Mikroskooppikujan", "Perustien", "Kontulankujan", "Kaivokadun",                                                                     "Kivenhakkaajantien",
+    "Priki Johannan kujan", "Metsätien", "Rakennusmestarintien", "Maunulanmäen",
+    "Skutholminkaaren", "Kotipolun", "Kaasutehtaankadun", "Lintulahdenkujan", "Ruoritien", "Kaj Franckin kadun"
+
+]
+
+GENITIVE_TEMPLATES = [
+    'Asun {s} varrella.',
+    'Pyöräilin {s} päästä päähän.',
+    '{s} asukkaat valittivat melusta.',
+    'Tapahtuma järjestetään {s} kulmassa.',
+    'Korjaustyöt aloitetaan {s} alueella.',
+    'Valot olivat sammuneet koko {s} pituudelta.',
+    'Ajoimme {s} läpi matkalla kotiin.',
+    'Puisto sijaitsee {s} vieressä.',
+    'Rakennustyömaa on {s} ja naapurikadun risteyksessä.',
+    'Hän asuu {s} numerossa 5.',
+    'Koko {s} pituudelta oli istutettu uusia puita.',
+    'Onko tämä {s} alku?',
+    'Pysäköinti on kielletty {s} toisella puolella.',
+    'Lapset leikkivät {s} leikkipuistossa.',
+    'Näin kolarin {s} ja Kauppakadun risteyksessä.',
+]
+
+# 3. Partitiivi (-a, -ä)
+STREETS_PARTITIVE = [
+    "Korsipolkua", "Soihtukujaa", "Lampipolkua", "Kreijarinkujaa", "Mikroskooppikujaa", "Perustietä", "Kontulankujaa",
+    "Kaivokatua", "Tiistellinginpolkua", "Lielahdentietä", "Riveliniemenpolkua", "Lapinlahdenkatua",
+    "Harmaapaadentietä", "Pituuspiiriä", "Rouvienpolkua", "Kivijatapolkua", "Telekatua", "Simsiönkujaa",
+    "Beckerintietä", "Parrukatua", "Pääskylänkatua", "Teininkujaa", "Kustaa Vaasan tietä", "Huovitietä",
+    "Vaskipellonpolkua", "Linnanpellonkujaa", "Oskelan aukiota", "Kylävoudinkujaa", "Hernesaarenrantaa",
+    "Hauhontietä", "Korsutietä", "Kolistimenpolkua", "Maakujaa", "Tukkikujaa", "Rakuunantietä", "Saranakujaa",
+    "Kotitorpantietä", "Sven Grahnin polkua", "Puistolantoria", "Jarrumiehenkatua", "Liukumäentietä", "Keijontietä",
+    "Kaanaanpihaa", "Kuuluttajankujaa", "Vegankatua", "Kröckelinkujaa", "Salmisaarenrantaa", "Katsastustietä",
+    "Jaakonkatua", "Oskarinkujaa", "Mesipuuta", "Vehkalahdenkujaa", "Pyötsaarenkujaa", "Pohjoisloistoa",
+    "Kivihaankujaa", "Helatehtaankatua", "Kytöniityntietä", "Klaneettitietä", "Nastolantietä", "Salavakujaa",
+    "Tuurholmanpolkua", "Tallbergin puistotietä", "Tenavatietä", "Joonaksenkujaa", "Mesenaatintietä", "Kämnerintietä",
+    "Puustellintietä", "Osuuskunnantietä", "Juhtatietä", "Kaupinmäenpolkua", "Vilkmanintietä", "Agnetankujaa",
+    "Sädekujaa", "Markelininpolkua", "Pikkusuonkujaa", "Lääkärinkatua", "Muuttolinnunkujaa", "Aurinkokujaa",
+    "Liikepolkua", "Merenkulkijankatua", "Polariksenkatua"
+]
+
+PARTITIVE_TEMPLATES = [
+    '{s} pitkin on mukava kävellä.',
+    'Bussi numero 5 kulkee {s} pitkin.',
+    'En löydä {s} kartalta.',
+    'Ajoin {s} kohti keskustaa.',
+    'Vältä {s}, siellä on tietyö.',
+    'He korjaavat parhaillaan {s}.',
+    'Etsin {s} Google Mapsista mutta sitä ei löytynyt.',
+    'Poliisi valvoi {s} tehostetusti.',
+    'Suunnitelmassa ehdotetaan {s} muuttamista kävelykaduksi.',
+    'En ole koskaan kuullutkaan {s}.',
+    'Katselin {s} ja sen vanhoja rakennuksia.',
+    'Rakennustyöt koskevat myös {s}.',
+    'Hän valokuvasi {s} aamunkoitteessa.',
+    'Mietin, mitä {s} varrella on.',
+    'Emme suosittele ajamaan {s} ruuhka-aikaan.',
+]
+
+# 4. Adessiivi (-lla, -llä)
+STREETS_ADESSIVE = [
+    "Muuttolinnunkujalla", "Aurinkokujalla", "Liikepolulla", "Merenkulkijankadulla", "Polariksenkadulla",
+    "Retkeilijänkadulla", "Samoilijanpolulla", "Paloluodolla", "Hietaniitynpolulla", "Annankadulla",
+    "Metsäläntiellä", "Pannipolulla", "Tukkitiellä", "Valtimontiellä", "Käärmeniementiellä", "Ilotulitustiellä",
+    "Kalannintiellä", "Hopeasalmenpolulla", "Kauppurinpolulla", "Kaisaniemen puistokujalla", "Ylä-Fallin polulla",
+    "Tykistönkadulla", "Käätypolulla", "Laukkaniementiellä", "Askarkujalla", "Isonniitynkadulla", "Jokipolulla",
+    "Wallininkadulla", "Antareksen kadulla", "Hakamäenkujalla", "Simppukarinkadulla", "Sorvaajankadulla",
+    "Louhikkotiellä", "Lehtisaarentiellä", "Malkapolulla", "Pakinkujalla", "Mäkikallionpihalla", "Punatulkuntiellä",
+    "Harjutorinkadulla", "Maksaruohonpolulla", "Neitojenpolulla", "Taivaanvuohentiellä", "Sillilaiturilla",
+    "Kehräkujalla", "Hiidenmaankadulla", "Bertha Pauligin kadulla", "Ruutikujalla", "Arttolankujalla",
+    "Heinäsarankaarella", "Viulupolulla", "Simakujalla", "Orakkaalla", "Kärppäkujalla", "Yhteiskouluntiellä",
+    "Selim Lindqvistin kujalla", "Rintinpolulla", "Saavikujalla", "Karviaismäenkujalla", "Bulevardilla",
+    "Yrjönkadulla", "Korkeakoskenkujalla", "Vormsilla", "Furuvikintiellä", "Hernepellontiellä", "Lepolantiellä",
+    "Huokotiellä", "Heinäsuontiellä", "Reposalmenpolulla", "Kirvelikujalla", "Purpuripolulla", "Junonkadulla",
+    "Sepänkadulla", "Porintiellä", "Veneentekijänkujalla", "Kallvikinkujalla"
+]
+
+ADESSIVE_TEMPLATES = [
+    'Pyörätie on tukossa {s}.',
+    'Lapset leikkivät {s} myöhään iltaan.',
+    'Poliisi pysäytti liikenteen {s}.',
+    'Asun {s}.',
+    'Tapahtui onnettomuus {s}.',
+    '{s} on tietyömaa.',
+    'Näin oudon miehen {s}.',
+    'Auto oli pysäköity {s}.',
+    'Järjestetään katujuhlat {s}.',
+    'Katuvalot eivät toimi {s}.',
+    '{s} on paljon liikennettä.',
+    'Ravintola sijaitsee {s}.',
+    'Melu {s} oli sietämätön.',
+    'Kävelin {s} ja katselin näyteikkunoita.',
+    'Pidetäänkö kirpputori {s}?',
+    'Bussipysäkki {s} on siirretty.',
+    'Oli ruuhkaa {s} aamulla.',
+    'Poliisipartio päivysti {s}.',
+]
+
+
+# 5. Ablatiivi (-lta, -ltä)
+STREETS_ABLATIVE = [
+    "Junonkadulta", "Sepänkadulta", "Porintieltä", "Veneentekijänkujalta", "Kallvikinkujalta", "Herastuomarintieltä",
+    "Kuiskaajanpolulta", "Rysäkarilta", "Hiekkalaiturinraitilta", "Riimukujalta", "Vitsaspolulta", "Areenankujalta",
+    "Varhelantieltä", "Jollaksentieltä", "Punamäeltä", "Tiilipolulta", "Energiakujalta", "Puronvarrelta",
+    "Lintulahdenkadulta", "Rantatöyryltä", "Hakaniemen metrotunnelilta", "Haukkakadulta", "Tilhitieltä",
+    "Vanhanlinnantieltä", "Runonlaulajantieltä", "Tattarisuontieltä", "Askolantieltä", "Haapsalunkujalta",
+    "Silkkitieltä", "Neitsytsaarentieltä", "Pukinkujalta", "Säkyläntieltä", "Roihuvuorentieltä",
+    "Katajamäentieltä", "Läntiseltä Papinkadulta", "Vislauskujalta", "Hopeatieltä", "Kuhilaspolulta",
+    "Linjakepiltä", "Haravakujalta", "Pengerkujalta", "Ristikkotieltä", "Arabianmäenpolulta",
+    "Tapaninvainiontieltä", "Schildtinpolulta", "Säästöpankinrannalta", "Myrttitieltä", "Kaitalahdentieltä",
+    "Rasmuksenkujalta", "Lehtikuusentieltä", "Liekopolulta", "Marunakujalta", "Savilankadulta",
+    "Talonpojantieltä", "Itäpolulta", "Kiitäjänkujalta", "Varpustieltä", "Sibeliuksenkadulta",
+    "Pihlajistonkujalta", "Mikael Lybeckin kadulta", "Vanamotieltä", "Sulkapolulta", "Kisällinkujalta",
+    "Perttulantieltä", "Porttirinteenpolulta", "Tarkk'ampujankadulta", "Palmsenpolulta", "Vemmelkujalta",
+    "Kivenhakkaajantieltä", "Priki Johannan kujalta", "Metsätieltä", "Rakennusmestarintieltä", "Maunulanmäeltä",
+    "Skutholminkaarelta", "Kotipolulta", "Kaasutehtaankadulta", "Lintulahdenkujalta", "Ruoritieltä",
+    "Kaj Franckin kadulta", "Ratamestarinkadulta", "Helminkadulta"
+]
+
+ABLATIVE_TEMPLATES = [
+    'Roska-astiat tulisi tyhjentää {s}.',
+    'Löysin lompakon {s}.',
+    'Näkymä {s} on upea.',
+    'Lähdimme {s} ja suuntasimme pohjoiseen.',
+    'Melu kantautui {s} asti.',
+    'Hän muutti pois {s} viime vuonna.',
+    'Matka {s} rautatieasemalle on lyhyt.',
+    'Vesi katkaistiin koko {s}.',
+    'Käänny pois {s} seuraavasta risteyksestä.',
+    'Sain hyvän tarjouksen {s} sijaitsevasta liikkeestä.',
+    'Poistuimme rakennuksesta {s}.',
+    'Kuulin laukauksen {s} suunnalta.',
+    'Pääsee nopeasti pois {s}.',
+    'Hän palasi juuri matkalta {s}.',
+    'Siirrä auto pois {s}.',
+]
+
+# 6. Allatiivi (-lle)
+STREETS_ALLATIVE = [
+    "Lintulahdenkujalle", "Ruoritielle", "Kaj Franckin kadulle", "Ratamestarinkadulle", "Helminkadulle",
+    "Korsnäsintielle", "Ruonasalmentielle", "Mustanniemenkujalle", "Puijonkadulle", "Laulurastaankujalle",
+    "Kauppakartanonkadulle", "Isolle Puistotielle", "Nahkahousuntielle", "Kartanon puistotielle", "Sienikujalle",
+    "Tietokujalle", "Perkiöntielle", "Nikonkujalle", "Ensi parvelle", "Hirsipadontielle", "Karhurannankujalle",
+    "Malminkaarelle", "Pitkänsiimantielle", "Reijolalle", "Alppikylänkadulle", "Erik Lönnrothin kujalle",
+    "Haperolle", "Hiidenkiventielle", "Pohjoiselle Hesperiankadulle", "Mustanhalssinkujalle", "Violankujalle",
+    "Mäkikurpankujalle", "Petter Wetterin tielle", "Latokartanonkujalle", "Käpylinnuntielle", "Sarvastonrinteelle",
+    "Aurinkomäentielle", "Meteorikujalle", "Ukkotuomarinkujalle", "Kauppalankujalle", "Lasarettikujalle",
+    "Tammisaarenkadulle", "Töölönlahdenkadulle", "Rohkatielle", "Huntupolulle", "Oppipojantielle", "Akselille",
+    "Messipojankujalle", "Nattastenpolulle"
+]
+
+ALLATIVE_TEMPLATES = [
+    'Käänny seuraavasta risteyksestä {s}.',
+    'Suunnittelemme muuttoa {s}.',
+    'Paketti toimitettiin {s}.',
+    'Ambulanssi kiirehti {s}.',
+    'Poliisi saapui {s} tutkimaan tapausta.',
+    'Uusi ravintola avataan {s} ensi kuussa.',
+    'Ohjeet navigoivat minut {s}.',
+    'Posti ei löytänyt perille {s}.',
+    'Tilaa taksi osoitteeseen {s} 5.',
+    'Kokous on siirretty {s} sijaitsevaan toimistoon.',
+    'He rakentavat uuden talon {s}.',
+    'Anna tarkat ajo-ohjeet {s}.',
+    'Lähetin kirjeen {s} asuvalle ystävälleni.',
+    'Palokunta hälytettiin {s}.',
+    'Suunnista {s} ja jatka suoraan.',
+    'Tervetuloa {s}!',
+    'Muuttofirman auto saapui {s}.',
+    'Kaikki tiet vievät {s}.',
+]
+
+
+# Combine all generated sentences into the final list
+TRAINING_DATA_STREETS = (
+    format_sentences(NOMINATIVE_TEMPLATES, STREETS_NOMINATIVE, max_sentences=100) +
+    format_sentences(GENITIVE_TEMPLATES, STREETS_GENITIVE, max_sentences=100) +
+    format_sentences(PARTITIVE_TEMPLATES, STREETS_PARTITIVE, max_sentences=100) +
+    format_sentences(ADESSIVE_TEMPLATES, STREETS_ADESSIVE, max_sentences=100) +
+    format_sentences(ABLATIVE_TEMPLATES, STREETS_ABLATIVE, max_sentences=100) +
+    format_sentences(ALLATIVE_TEMPLATES, STREETS_ALLATIVE, max_sentences=100)
+)
+
+# This map structure associates each list of inflected street names
+# with its corresponding list of sentence templates.
+STREET_DATA_MAP = [
+    {"streets": STREETS_NOMINATIVE, "templates": NOMINATIVE_TEMPLATES},
+    {"streets": STREETS_GENITIVE, "templates": GENITIVE_TEMPLATES},
+    {"streets": STREETS_PARTITIVE, "templates": PARTITIVE_TEMPLATES},
+    {"streets": STREETS_ADESSIVE, "templates": ADESSIVE_TEMPLATES},
+    {"streets": STREETS_ABLATIVE, "templates": ABLATIVE_TEMPLATES},
+    {"streets": STREETS_ALLATIVE, "templates": ALLATIVE_TEMPLATES},
+]
+
 SENTENCES_STREETS = [
     'Toivotaan energiahuoltoa {s} 6 sähköt roikkuu sähkölinjalla.',
     'Osoitteessa {s} tien puolella on kivi.',
@@ -629,7 +619,7 @@ SENTENCES_STREETS = [
     'Auraus ei tullut tiistaina {s} 12.',
     '{s} 1 aurataan liian usein.',
     'Malmin {s} 5 A 1 varpuset nokkii murusia.',
-    'Toivon aurausta {s}lle.',
+    'Toivon aurausta kadulle {s}',
     'AsOy {s}.',
     '{s} risteykseen kerääntyy sateella suuri lammikko vettä.',
     'Karhujen kerhotalo {s} 11 B ottaa vastaan reippaita urheilijoita ympäri vuoden.',
@@ -647,6 +637,47 @@ SENTENCES_STREETS = [
     'Milloin {s} 9:n katukuoppia aiotaan paikata? Ne ovat vaaraksi pyöräilijöille.',
     'Olisi hienoa, jos {s} 19:n koirapuistoon voitaisiin asentaa lisää varjoa tarjoavia puita.',
     'Haluaisin antaa palautetta {s} 7:n varren loistavasta katutaidegalleriasta.',
+    # Additional sentences specifically for streets with personal names
+    'Kadulla {s} sijaitsee vanha puutalo.',
+    'Aukiolla {s} järjestetään toritapahtuma.',
+    'Osoitteessa {s} 24 asuu ystäväni.',
+    'Käänny vasemmalle tieltä {s}.',
+    'Bussipysäkki sijaitsee kadulla {s}.',
+    'Tienvarteen {s} on pysäköity autoja.',
+    'Kulkue kulkee {s} pitkin.',
+    'Asuinalue {s} varrella on rauhallinen.',
+    'Risteys {s} ja Mannerheimintie.',
+    'Talon osoite on {s} 46.',
+    'Asun osoitteessa {s} 98 H 22.',
+    'Postilaatikko kadulla {s} on täynnä.',
+    'Pyöräparkkia {s} varrella ei ole tarpeeksi.',
+    'Suojatie {s} kohdalla on huonosti valaistu.',
+    'Leikkipuisto {s} 42 on lasten suosikki.',
+    'Raitiovaunupysäkki {s} varrella tarvitsee katoksen.',
+    'Kadun {s} 74 päässä on tietyö.',
+    'Metroasema {s} 69 palvelee monia matkustajia.',
+    'Kävelyreitti {s} 67 G 33 on suosittu.',
+    'Alueella {s} 4 tarvitaan lisää valaistusta.',
+    'Osoite {s} 90 on helppo löytää.',
+    'Julkisivu {s} 45 F 25 tarvitsee maalausta.',
+    'Taloyhtiön osoite on {s} 38.',
+    'Työmaa {s} 69 H 4 aiheuttaa viivytyksiä.',
+    'Toimisto sijaitsee osoitteessa {s} 1 G 47.',
+    'Ravintola {s} 93 on suosittu.',
+    'Kauppa {s} 13 on avoinna arkisin.',
+    'Päiväkoti {s} 16 ottaa vastaan uusia lapsia.',
+    'Kirjasto {s} 72 on remontoitu.',
+    'Kerhotalo {s} 21 G 27 järjestää tapahtumia.',
+    'Puisto {s} 2 on kaunis keväällä.',
+    'Urheilukenttä {s} 90 on varattu lauantaille.',
+    'Aukio {s} on kiva kohtauspaikka.',
+    'Silta {s} ylittää joen.',
+    'Ranta {s} on suosittu kesäisin.',
+    'Tori {s} on vilkas aamuisin.',
+    'Polku {s} kulkee metsän läpi.',
+    'Tie {s} johtaa keskustaan.',
+    'Kuja {s} on kapea ja kaunis.',
+    'Raitti {s} on jalankulkijoille.',
     'Voisiko {s} 27:n risteysalueelle saada lisävalaistusta?',
     'Pysäköintikiellot {s} 13:ssa ovat epäselviä ja aiheuttavat sekaannusta.',
     'Olen iloinen siitä, että {s} 29:n katualue on saanut uutta asfalttia.',
@@ -678,6 +709,7 @@ SENTENCES_STREETS = [
     'Kiitos, että {s} 30:n alueen puistot ovat pidetty siistinä ja turvallisina.',
 ]
 
+#sentence_resources
 SENTENCES_AREAS = [
     '{s} alueen kehittäminen pitäisi olla etusijalla.',
     '{s} nauttii taas kesäisestä auringosta.',
@@ -722,7 +754,7 @@ SENTENCES_AREAS = [
     'Ymmärrän, että {s} rakennustyömaasta aiheutuu melua, mutta voitaisiinko sitä rajoittaa iltaisin?',
     'Mielestäni {s} juna-aseman ympäristö voisi olla turvallisempi.',
     'Onko mahdollista lisätä liikennemerkkejä {s} risteyksiin parantamaan näkyvyyttä?',
-    'Haluaisin kiittää {s} alueen katujen kunnossapidosta talven aikana.',
+    'Haluaisin kiittää {s}a alueen katujen kunnossapidosta talven aikana.',
     'Onko tietoa, milloin {s} vesijohtoverkoston vuotava kohta korjataan?',
     'Olisi hienoa, jos {s} asukkaille tarjottaisiin yhteisökompostointimahdollisuus.',
     'En ole tyytyväinen siihen, miten {s} parkkialueen liikennejärjestelyt on suunniteltu.',
@@ -742,10 +774,10 @@ SENTENCES_AREAS = [
     'Onko suunnitteilla, että {s} alueen kouluihin tulisi lisää iltapäiväkerhotoimintaa?',
     'Olisi kiva, jos {s} asukkaille järjestettäisiin enemmän yhteisiä siivoustalkoita.'
 ]
-
+#sentence_resources
 EVALUATION_SENTENCES = [
     # Name evaluation sentences - 25
-    'Haluaisin kiittää {s} hänen nopeasta toiminnastaan, kun hän huolehti kaatuneen puun poistamisesta tieltämme, mikä paransi merkittävästi alueemme turvallisuutta. ',
+    'Haluaisin kiittää {s}a hänen nopeasta toiminnastaan, kun hän huolehti kaatuneen puun poistamisesta tieltämme, mikä paransi merkittävästi alueemme turvallisuutta. ',
     '{s} ansaitsee kiitokset siitä, kuinka hienosti hän on pitänyt huolta puistojemme kunnossapidosta, mikä tekee niistä viihtyisiä ja kauniita paikkoja kaikille. ',
     'Kiitän {s} hänen tehokkaasta tavastaan käsitellä melusaasteeseen liittyviä valituksia, mikä on parantanut monien asukkaiden elämänlaatua. ',
     'Olen iloinen nähdessäni, että {s} on ottanut toiveemme huomioon ja järjestänyt lisää leikkialueita lapsille, mikä on tuonut iloa ja aktiivisuutta yhteisöömme. ',
@@ -813,10 +845,10 @@ EVALUATION_SENTENCES = [
     'Asunnot {s} ovat kysyttyjä.',
     '{s} terveyskeskus palvelee asukkaita hyvin.',
     'Harrastusmahdollisuudet {s} ovat monipuoliset.',
-    'Kerhotalo {s} järjestää paljon tapahtumia.',
+    'Kerhotalo {s} järjestää paljon tapahtumia, voisiko kaupunki tukea sitä rahallisesti?',
     '{s} kirjasto on hyvin varustettu.',
     'Leikkipaikat {s} ovat turvallisia.',
-    'Yhteisöllisyys {s} on vahvaa.',
+    'Yhteisöllisyys {s} on vahvaa, mutta milloin saamme luvatun nuorisotalon?',
     '{s} ravintoloissa on hyvä tunnelma.',
     'Liikuntapuisto {s} tarjoaa paljon aktiviteetteja.',
     '{s} markkinat houkuttelevat paljon väkeä.',
@@ -849,7 +881,7 @@ EVALUATION_SENTENCES = [
     'Viikonloppuna voi rentoutua.',
     'Keskiviikkona on usein puoliväli viikosta.',
 ]
-
+#sentence_resources
 EVALUATION_VALUES = [
     # Names - 25 examples for better coverage
     'Martti',
@@ -956,7 +988,7 @@ EVALUATION_VALUES = [
     None,
     None,
 ]
-
+#sentence_resources
 EVALUATION_LABELS = [
     # Names - 25
     NAME_ENTITY,
@@ -1064,72 +1096,72 @@ EVALUATION_LABELS = [
     None,
 ]
 
+MIXED_PATTERNS_PERSON_STREET = [
+    # Most common pattern from test data
+    "Palautteessa mainitaan, että tunnettu kuvataiteilija {name} asui osoitteessa {street} {number}.",
+    "{name} kertoi että kauppa sijaitsi ennen osoitteessa {street} {number}.",
+    "Talonmiehenä pidetty {name} on toiminut osoitteessa {street} {number} jo kahdentoista vuoden ajan.",
+    # Secondary patterns
+    "Meille {name} mainitsi että {street} {number} rakennus on historiallinen.",
+    "{name} huomautti että {street}n valaistus kaipaa korjausta.",
+    "{name} valittaa että {street}n kunto on huono.",
+    "Myös {name} toivoo että {street}lla saisi olla lisää puita.",
+    "Haastattelussa {name} sanoo että {street}lla bussin {number} bussipysäkki tarvitsee katoksen.",
+]
+#sentence_resources
+MIXED_PATTERNS_PERSON_AREA = [
+    "{name} kertoi että {area} kaipaa investointeja.",
+    "{name} mainitsi että {area} puisto on kaunis.",
+    "{name} valittaa että {area}n liikenneyhteydet ovat huonot.",
+    "{name} kiittää että {area}n palvelut ovat parantuneet.",
+    "{name} ehdottaa että {area} tarvitsee lisää valaistusta.",
+    "{name} huomauttaa että {area}ssa turvallisuus on parantunut.",
+    "{name} sanoo että {area} on mukava asuinalue.",
+    "Asukas {name} mainitsee että {area} kehittyy nopeasti.",
+]
+#sentence_resources
+MIXED_PATTERNS_PERSON_STREET_AREA = [
+    "{name} kertoi että {area}, {street} {number} kauppa suljetaan.",
+    "{name} mainitsi että {area} alueella {street} tarvitsee korjausta.",
+    "{area} -lehdessä {name} huomautti että {street} {number} kohdalla on ongelma.",
+    "{name} sanoo, että uusi {area}-puisto osoitteessa {street} on hieno.",
+]
+#sentence_resources
+# Additional realistic patterns for varied contexts - ONLY patterns with nominative case
+MIXED_PATTERNS_PERSON_STREET_EXTENDED = [
+    "Vaikka {street}n kentällä olisi jäätä {name} tulee aina katsomaan onko pelaajia.",
+    "Opettaja {name} muistaa kun {street} {number} vieressä oli vielä vanha koulu.",
+    "Jo iäkäs {name} kertoo, että {street} {number} kohdalla oli ennen kauppa.",
+    "{name} toivoo että {street} {number} vanha puu säilytetään.",
+    "{name} on aina ihaillut {street} {number} rakennuksen arkkitehtuuria.",
+    "Ennen {street} {number} tontilla oli puutarha, kertoo {name}.",
+    "Jo 80v {name} muistelee että {street} oli hänen koulutiensä.",
+    "Vähemmän yllättäen {name} totesikin että {street}n historiaa pitäisi vaalia.",
+    "{name} kirjoitti että {street} {number} on historiallinen.",
+    "Eilisen helsingin sanomissa nimimerkki {name} ehdotti että {street} {number} kunnostetaan.",
+    "Kaupunginviskaali {name} kertoi että {street} {number} kauppa suljetaan.",
+    "Haastattelussa {name} mainitsi että {street} tarvitsee korjausta.",
+    "Meidän kylä-lehdessä {name} huomautti että {street} {number} kohdalla on ongelma.",
+    "Päiväkodin ohi kulkenut {name} kehuu, että uusi puisto osoitteessa {street} on hieno.",
+]
 
+ADVERBS = ['hyvin', 'mukavasti', 'tyylikkäästi', 'oudosti', 'pohdiskellen', 'tuttavallisesti',
+           'nopeasti', 'hitaasti', 'iloisesti', 'surullisesti', 'rauhallisesti', 'kiireisesti',
+           'varovasti', 'rohkeasti', 'tarkasti', 'huolellisesti', 'epävarmasti', 'varmasti',
+           'energisesti', 'väsymättä', 'innokkaasti', 'epätoivoisesti', 'optimistisesti',
+           'realistisesti', 'unelmoiden' ]
+ADJECTIVES = ['hieno', 'mukava', 'tyylikäs', 'outo', 'pohdiskeleva', 'tuttavallinen', 'kiva',
+              'hauska', 'kummallinen', 'mielenkiintoinen', 'kaunis', 'ruma', 'iso', 'pieni',
+              'vanha', 'uusi', 'kallis', 'halpa', 'kiva', 'ihana', 'kamala', 'pelottava', 'uusi',
+              'moderni', 'perinteinen', 'värikäs', 'harmaa', 'rauhallinen', 'vilkas', 'hiljainen']
 
-
-print("Formatting training data into spacy examples...")
-
-for s in NAME_LIST:
-    sentence, start, end = generate_sentence(s, SENTENCES_NAME)
-    doc = nlp(sentence)
-    entities = [[start, end, NAME_ENTITY]]
-    example: Example = Example.from_dict(doc, {"entities": entities})
-    TRAIN_DATA.append(example)
-
-street_suffixes = ['llä', 'lle', 'lta', 'ltä', 'lla', 'n', 'ksi', 'ssa', 'ssä', 'sta', 'stä']
-for s in STREET_LIST:
-    s_original = s
-    s = s.lower()
-
-    # Choose sentence templates based on street name type
-    if not ' ' in s and any(x in s for x in ['katu', 'tie', 'polku']):
-        # use full set only with traditional street names
-        sentence, start, end = generate_sentence(s, SENTENCES_STREETS)
-    else:
-        sentence, start, end = generate_sentence(s, SENTENCES_STREETS[:11])
-
-    parts = s.split(' ')
-    entities = []
-    if len(parts) > 1:
-        i = start
-        for p in parts:
-            j = i + len(p)
-            entities.append([i, j, STREET_ENTITY])
-            i = j + 1
-    else:
-        entities = [[start, end, STREET_ENTITY]]
-
-    doc = nlp(sentence)
-    example: Example = Example.from_dict(doc, {"text": sentence, "entities": entities})
-    TRAIN_DATA.append(example)
-
-    # Add variations with Finnish case suffixes for compound street names without spaces
-    if not ' ' in s and len(TRAIN_DATA) < (len(NAME_LIST) + len(STREET_LIST) * 3 + len(AREA_LIST)):
-        # Add one suffix variation to increase training data diversity
-        suffix = random.choice(street_suffixes)
-        if not s.endswith(suffix):
-            s_var = s + suffix
-            sentence_var, start_var, end_var = generate_sentence(s_var, SENTENCES_STREETS[:5])
-            doc_var = nlp(sentence_var)
-            entities_var = [[start_var, end_var, STREET_ENTITY]]
-            example_var: Example = Example.from_dict(doc_var, {"text": sentence_var, "entities": entities_var})
-            TRAIN_DATA.append(example_var)
-
-for s in AREA_LIST:
-    sentence, start, end = generate_sentence(s.lower(), SENTENCES_AREAS)
-    doc = nlp(sentence)
-    entities = [[start, end, AREA_ENTITY]]
-    example: Example = Example.from_dict(doc, {"entities": entities})
-    TRAIN_DATA.append(example)
-
-
-# Add here example sentences that are used to teach not anonymizable sentences
 FALSE_POSITIVES = [
-    'Aura on naisen nimi mutta tässä yhteydessä viittaan kalustoon joka poistaa lunta kadulta.'
-    'Maunulan Majalla maistuu mehu ja pulla'
-    'Kruunuhaan Meritullintiellä autot ovat siististi parkissa'
-    'Viikissä Mannerheimintiellä on katutyö'
-    'Malmilla Kissantiellä kaikki hyvin'
+    # Original examples
+    'Aura on naisen nimi mutta tässä yhteydessä viittaan kalustoon joka poistaa lunta kadulta.',
+    'Maunulan Majalla maistuu mehu ja pulla',
+    'Kruunuhaan Meritullintiellä autot ovat siististi parkissa',
+    'Viikissä Mannerheimintiellä on katutyö',
+    'Malmilla Kissantiellä kaikki hyvin',
     'Vaaditaan ed. mainittujen katujen lakaisua, etenkin Einarinkuja',
     'Flöitti dianan kujan bussipysäkillä on lasinsiruja',
     'Kekkolan tien risteyksessä on siili',
@@ -1141,8 +1173,8 @@ FALSE_POSITIVES = [
     'Mahtilan Koulu',
     'Aura ajoi seinääni.',
     'Aura-auton kuski käyttää sinistä hattua',
-    'Vaaditaan ed. mainittujen katujen aurausta! '
-    'Ala-asteen pihassa on upea PUU'
+    'Vaaditaan ed. mainittujen katujen aurausta!',
+    'Ala-asteen pihassa on upea PUU',
     'Minusta tontti 38161/3 on kaunis.',
     'EU-kansalaisen kotimaa on eu-alueella.',
     'Helsingfors eli Helsinki, kuten täällä pää-hesassa sanomme.',
@@ -1169,6 +1201,477 @@ FALSE_POSITIVES = [
     'Syksy on kaunis vuodenaika.',
     'Aurinko paistaa kirkkaasti.',
     'Jaspi, Valkea Kuulas ja Collina ovat omenalajikeita.',
+    # Weather and seasons (50 examples)
+    'Sää on tänään pilvinen ja viileä.',
+    'Huomenna satanut lumi sulaa pois.',
+    'Syksyisin lehdet putoavat maahan.',
+    'Kevät tuo tullessaan uuden alkuun.',
+    'Talvella on pimeää ja kylmää.',
+    'Kesäisin ilma on lämmin ja kostea.',
+    'Sade piisaa ikkunaan tasaisesti.',
+    'Tuuli puhaltaa kovasti ulkona.',
+    'Pakkanen kiristää ilmaa.',
+    'Lämpötila nousee päivän aikana.',
+    'Ilmankosteus on korkea tänään.',
+    'Ukkonen jyrisee kaukaisuudessa.',
+    'Salamat välkkyvät taivaalla.',
+    'Sumu peittää näkyvyyden.',
+    'Räntä sataa tihkuna.',
+    'Jää peittää kadut.',
+    'Lumi kertuu kasoihin.',
+    'Aurinko paistaa kirkkaasti taivaalla.',
+    'Pilvet liikkuvat hitaasti.',
+    'Ilma on raikas ja puhdas.',
+    'Kosteus tuntuu iholla.',
+    'Lämpimät tuulet puhaltavat etelästä.',
+    'Yöpakkanen kovettaa maan.',
+    'Aamukaste kiiltelee ruoholla.',
+    'Ilta-aurinko laskee horisonttiin.',
+    'Tähtitaivas on kirkas yöllä.',
+    'Kuutamo valaisee pihaa.',
+    'Hämärä laskeutuu hitaasti.',
+    'Aamunkoitto alkaa varhain.',
+    'Iltahämärä pidentää varjoja.',
+    'Päivä on pitkä kesällä.',
+    'Yö on pitkä talvella.',
+    'Vuodenajat vaihtuvat säännöllisesti.',
+    'Sääennuste lupaa sadetta.',
+    'Tuulennopeus on kohtalainen.',
+    'Ilmanpaine laskee hitaasti.',
+    'Lämpötilan vaihtelu on suurta.',
+    'Kostea ilma tuntuu raskaalta.',
+    'Kuiva ilma raapii kurkkua.',
+    'Tuulenpuuska heiluttaa puita.',
+    'Lumihiutaleet leijailelevat ilmassa.',
+    'Jäätikkö sulaa hitaasti.',
+    'Routa lähtee maasta keväällä.',
+    'Helle piinaa kesäpäivinä.',
+    'Viima viilentää kesäyötä.',
+    'Ilmasto muuttuu hitaasti.',
+    'Säätila vaihtelee päivittäin.',
+    'Lämpöaalto jatkuu viikon.',
+    'Kylmä ilma virtaa pohjoisesta.',
+    'Matalapaine tuo sadetta.',
+    # Time expressions (50 examples)
+    'Kello on nyt täsmälleen kolme.',
+    'Aika kuluu nopeasti.',
+    'Hetki sitten oli vielä aamupäivä.',
+    'Juuri nyt on paras hetki.',
+    'Myöhemmin illalla tapaamme.',
+    'Aikaisemmin tänään satoi.',
+    'Pian on aika syödä.',
+    'Kohta alkaa elokuva.',
+    'Hetken kuluttua olemme perillä.',
+    'Tuokion päästä jatketaan.',
+    'Jonkin ajan kuluttua palataan.',
+    'Vuorokausi on 24 tuntia.',
+    'Tunti on 60 minuuttia.',
+    'Minuutti on 60 sekuntia.',
+    'Viikko on seitsemän päivää.',
+    'Kuukausi on noin 30 päivää.',
+    'Vuosi on 12 kuukautta.',
+    'Vuosikymmen on kymmenen vuotta.',
+    'Vuosisata on sata vuotta.',
+    'Vuosituhat on tuhat vuotta.',
+    'Maanantai on viikon ensimmäinen päivä.',
+    'Tiistai seuraa maanantaita.',
+    'Keskiviikko on viikon puoliväli.',
+    'Torstai edeltää perjantaita.',
+    'Perjantai on viikon viimeinen työpäivä.',
+    'Lauantai on viikonloppua.',
+    'Sunnuntai on lepopäivä.',
+    'Tammikuu on vuoden ensimmäinen kuukausi.',
+    'Helmikuu on lyhin kuukausi.',
+    'Maaliskuu tuo kevään.',
+    'Huhtikuu on epävakaa.',
+    'Toukokuu on kaunis kuukausi.',
+    'Kesäkuu on kesän alkua.',
+    'Heinäkuu on lomakuukausi.',
+    'Elokuu on kesän loppua.',
+    'Syyskuu tuo syksyn.',
+    'Lokakuu on sateinen.',
+    'Marraskuu on pimeä kuukausi.',
+    'Joulukuu on juhlavuoden loppu.',
+    'Aamuyö on hiljainen hetki.',
+    'Aamupäivä alkaa aikaisin.',
+    'Keskipäivä on lounasaikaa.',
+    'Iltapäivä kuluu nopeasti.',
+    'Ilta tuo lepoa.',
+    'Yö on pimeä ja hiljainen.',
+    'Keskiyö on vuorokauden puoliväli.',
+    'Aamuhetki on rauhoittava.',
+    'Iltahämärä on kaunista aikaa.',
+    'Päivänvalo vähenee syksyllä.',
+    'Pimeys lisääntyy talvella.',
+    # Numbers and measurements (50 examples)
+    'Numero yksi on pienin positiivinen kokonaisluku.',
+    'Kaksi plus kaksi on neljä.',
+    'Kolme kertaa kolme on yhdeksän.',
+    'Neljä on parillinen luku.',
+    'Viisi on pariton luku.',
+    'Kuusi jaettuna kahdella on kolme.',
+    'Seitsemän on alkuluku.',
+    'Kahdeksan on kahden kolmas potenssi.',
+    'Yhdeksän on kolmen neliö.',
+    'Kymmenen on pyöreä luku.',
+    'Sata on kymmenen kertaa kymmenen.',
+    'Tuhat on suuri luku.',
+    'Miljoona on valtava määrä.',
+    'Miljardi on käsittämätön summa.',
+    'Prosentti on sadasosa.',
+    'Puolet on 50 prosenttia.',
+    'Kolmasosa on noin 33 prosenttia.',
+    'Neljäsosa on 25 prosenttia.',
+    'Kymmenesosa on 10 prosenttia.',
+    'Metri on pituuden yksikkö.',
+    'Senttimetri on sadas metri.',
+    'Kilometri on tuhat metriä.',
+    'Millimetri on tuhannesosa metriä.',
+    'Gramma on massan yksikkö.',
+    'Kilogramma on tuhat grammaa.',
+    'Tonni on tuhat kilogrammaa.',
+    'Litra on tilavuuden yksikkö.',
+    'Millilitra on tuhannesosa litrasta.',
+    'Desilitra on kymmenesosa litrasta.',
+    'Sekunti on ajan yksikkö.',
+    'Neliömetri on pinta-alan yksikkö.',
+    'Kuutiometri on tilavuuden yksikkö.',
+    'Aste on lämpötilan yksikkö.',
+    'Celsius on lämpötila-asteikko.',
+    'Kelvin on absoluuttinen lämpötila.',
+    'Joule on energian yksikkö.',
+    'Watti on tehon yksikkö.',
+    'Voltit mittaavat jännitettä.',
+    'Ampeeri on virran yksikkö.',
+    'Hevosvoima on vanhanaikainen tehoyksikkö.',
+    'Pascal on paineen yksikkö.',
+    'Baari on paineen yksikkö.',
+    'Hertz on taajuuden yksikkö.',
+    'Decimaali on kymmenjärjestelmää.',
+    'Binäärinen on kaksijärjestelmä.',
+    'Heksadesimaalinen on kuusitoistajärjestelmä.',
+    'Okaalinen on kahdeksanjärjestelmä.',
+    'Plus merkitsee yhteenlaskua.',
+    'Miinus merkitsee vähennyslaskua.',
+    'Kertomerkki on matematiikan symboli.',
+    # Colors and descriptions (50 examples)
+    'Punainen on lämmin väri.',
+    'Sininen on viileä väri.',
+    'Keltainen on kirkas väri.',
+    'Vihreä on luonnonväri.',
+    'Oranssi on sekoitusväri.',
+    'Violetti on tumma väri.',
+    'Valkoinen on kaikkien värien summa.',
+    'Musta on värien poissaolo.',
+    'Harmaa on neutraali väri.',
+    'Ruskea on maaläheinen väri.',
+    'Pinkki on vaalean punainen.',
+    'Turkoosi on sinivihreä.',
+    'Liila on vaalean violetti.',
+    'Beige on vaalean ruskea.',
+    'Kulta on metallinen väri.',
+    'Hopea on kiiltävä väri.',
+    'Pronssi on tumman kulta.',
+    'Iso on suuren kokoinen.',
+    'Pieni on vähäisen kokoinen.',
+    'Suuri on laajuudeltaan merkittävä.',
+    'Vähäinen on määrältään niukka.',
+    'Korkea ulottuu ylöspäin.',
+    'Matala on lähellä maata.',
+    'Pitkä on etäisyydeltään suuri.',
+    'Lyhyt on kestoltaan vähäinen.',
+    'Leveä on laajuudeltaan runsas.',
+    'Kapea on ahtaan oloinen.',
+    'Syvä menee pitkälle alaspäin.',
+    'Matala on vähäisen syvyinen.',
+    'Paksu on vahvuudeltaan runsas.',
+    'Ohut on heiveröinen.',
+    'Raskas on painava.',
+    'Kevyt on helpon tuntuinen.',
+    'Nopea liikkuu vauhdikkaasti.',
+    'Hidas etenee verkkaisesti.',
+    'Äänekäs on kovaääninen.',
+    'Hiljainen on hiljaa oleva.',
+    'Kirkas on valoisuudeltaan voimakas.',
+    'Tumma on valaistumaton.',
+    'Kiiltävä heijastaa valoa.',
+    'Himmeä on vaimentuneen oloinen.',
+    'Sileä on tasainen pinnaltaan.',
+    'Karkea on rosoisuudeltaan epätasainen.',
+    'Pehmeä on kosketukseltaan miellyttävä.',
+    'Kova on tiukka.',
+    'Jäykkä on taipumaton.',
+    'Notkeä on liikkuvainen.',
+    'Elastinen on venyvä.',
+    'Hauras on helposti rikkoutuva.',
+    'Vahva kestää rasitusta.',
+    # Animals and nature (50 examples)
+    'Koira on ihmisen paras ystävä.',
+    'Kissa on itsenäinen eläin.',
+    'Lintu laulaa aamuisin.',
+    'Kala ui vedessä.',
+    'Hevonen laukkaa nopeasti.',
+    'Lehmä antaa maitoa.',
+    'Sika röhkii kotelossa.',
+    'Lammas on villan lähde.',
+    'Vuohi kiipeää kallioilla.',
+    'Kana munii munia.',
+    'Kukko kiekuu aamulla.',
+    'Ankka ui lammessa.',
+    'Hanhi vaeltaa laumoissa.',
+    'Joutsen on kaunis lintu.',
+    'Pöllö metsästää yöllä.',
+    'Kotka lentää korkealla.',
+    'Varis on älykäs lintu.',
+    'Harakka on kiiltävän musta.',
+    'Punarinta laulaa makeasti.',
+    'Peippo on kevään merkki.',
+    'Pääskynen saapuu keväällä.',
+    'Kurki lähtee muuttolle syksyllä.',
+    'Karhu nukkuu talviunta.',
+    'Susi ulvoo kuutamossa.',
+    'Kettu on ovela eläin.',
+    'Jänis hyppii kepeästi.',
+    'Orava kerää pähkinöitä.',
+    'Hirvi on majestuosa eläin.',
+    'Peura on arkaluontoinen.',
+    'Ilves on Suomen suurpeto.',
+    'Siili on piikkien peitossa.',
+    'Myyrä kaivaa maahan.',
+    'Hiiri on pieni jyrsijä.',
+    'Rotta elää kaupungeissa.',
+    'Lepakko lentää yöllä.',
+    'Sammakoiden kuoro kajahtaa.',
+    'Konna hyppii vedessä.',
+    'Käärme liukuu maassa.',
+    'Lisko ottaa aurinkoa.',
+    'Mehiläinen kerää hunajaa.',
+    'Kimalainen kukkii kesällä.',
+    'Perhonen on väriltään kaunis.',
+    'Sudenkorento lentää nopeasti.',
+    'Hyttynen pistää ihoa.',
+    'Kärpänen surrataan ympäriinsä.',
+    'Hämähäkki kutoo verkkoa.',
+    'Muurahainen on ahkera työntekijä.',
+    'Kärpässieniä on sienimetsässä.',
+    'Kantarelli on keltainen sieni.',
+    'Mustikka kasvaa kangasmaalla.',
+    # Food and drinks (50 examples)
+    'Leipä on päivittäistä ruokaa.',
+    'Maito on terveellistä juotavaa.',
+    'Kahvi on aamun piristäjä.',
+    'Tee on rentouttava juoma.',
+    'Vesi on elämän edellytys.',
+    'Mehu on hedelmistä tehty.',
+    'Limu on virvoitusjuoma.',
+    'Olut on humalasta valmistettu.',
+    'Viini on rypäleistä tehty.',
+    'Juusto on maidosta valmistettu.',
+    'Voi on rasvaa.',
+    'Margariini on kasviöljyä.',
+    'Kananmuna on proteiinin lähde.',
+    'Liha on eläinperäistä ravintoa.',
+    'Kala on terveellistä proteiinia.',
+    'Peruna on juurikas.',
+    'Porkkana on oranssi juures.',
+    'Sipuli maustaa ruokaa.',
+    'Valkosipuli on voimakas mauste.',
+    'Tomaatti on hedelmä.',
+    'Kurkku on vihanneksia.',
+    'Paprika on väriltään kirkas.',
+    'Salaatti on vihreää.',
+    'Kaali on keittiövihanneksia.',
+    'Parsakaali on terveellistä.',
+    'Kukkakaali on valkoinen.',
+    'Pinaatti on rautapitoista.',
+    'Omena on suosittu hedelmä.',
+    'Päärynä on makeaa.',
+    'Banaani on keltainen hedelmä.',
+    'Appelsiini on C-vitamiinia.',
+    'Mandariini on pieni sitrushedelmä.',
+    'Sitruuna on hapanta.',
+    'Lime on vihreä sitrushedelmä.',
+    'Greippi on karvas hedelmä.',
+    'Kiivi on karvainen hedelmä.',
+    'Mango on trooppinen hedelmä.',
+    'Ananas on piikikäs hedelmä.',
+    'Vesimeloni on virkistävä.',
+    'Meloni on makea hedelmä.',
+    'Mansikka on kesän herkku.',
+    'Vadelma on pehmeä marja.',
+    'Mustikka on sininen marja.',
+    'Puolukka on karvasta marjaa.',
+    'Karpalo on hapanta.',
+    'Tyrni on C-vitamiinia.',
+    'Riisi on viljatuote.',
+    'Pasta on italialaiseen keittiöön kuuluva.',
+    'Pizza on suosittu ruokalaji.',
+    'Hampurilainen on pikaruokaa.',
+    # Activities and verbs (50 examples)
+    'Käveleminen on terveellistä liikuntaa.',
+    'Juokseminen vahvistaa kuntoa.',
+    'Pyöräily on ympäristöystävällistä.',
+    'Uinti on koko kehon liikuntaa.',
+    'Hiihto on talvilajien kuningatar.',
+    'Luistelu on taitolaji.',
+    'Rullaluistelu on kesäaktiviteetti.',
+    'Laskettelu on jännittävää.',
+    'Lumilautailu on nuorten laji.',
+    'Kiipeily vaatii voimaa.',
+    'Vaellus on rauhallista liikuntaa.',
+    'Melonta on vesiurheilua.',
+    'Soutu kehittää lihaksistoa.',
+    'Kalastus on harrastus.',
+    'Metsästys on perinteistä.',
+    'Marjastus on kesäpuuhaa.',
+    'Sienestys on syysharrastus.',
+    'Puutarhanhoito on rentouttavaa.',
+    'Lukeminen avartaa mieltä.',
+    'Kirjoittaminen on ilmaisua.',
+    'Piirtäminen on taidetta.',
+    'Maalaaminen vaatii kärsivällisyyttä.',
+    'Veistäminen on käsityötaitoa.',
+    'Valokuvaus tallentaa hetkiä.',
+    'Musisointi on luovaa toimintaa.',
+    'Laulaminen on ilon ilmaisua.',
+    'Tanssiminen on rytmistä liikettä.',
+    'Näytteleminen vaatii rohkeutta.',
+    'Ruoanlaitto on jokapäiväistä.',
+    'Leipominen tuottaa herkkuja.',
+    'Grillaus on kesän iloa.',
+    'Paistaminen on perusruoanlaittoa.',
+    'Keittäminen on vanhin menetelmä.',
+    'Uunissa paistaminen on helppoa.',
+    'Mikrossa lämmittäminen on nopeaa.',
+    'Siivous pitää kodin puhtaana.',
+    'Pyykinpesu on välttämätöntä.',
+    'Tiskaus on päivittäistä puuhaa.',
+    'Imurointi poistaa pölyn.',
+    'Pyyhkiminen siistii pinnat.',
+    'Järjestäminen luo tilaa.',
+    'Korjaus pidentää esineen ikää.',
+    'Rakentaminen luo uutta.',
+    'Maalaus uudistaa pintoja.',
+    'Tapettaminen muuttaa ilmettä.',
+    'Kiillotus tuo loistoa.',
+    'Puhdistus poistaa lian.',
+    'Huoltaminen pitää toimintakuntoisena.',
+    'Säätäminen optimoi toiminnan.',
+    'Testaaminen varmistaa laadun.',
+    'Rakkaus on voimakas tunne.',
+    'Viha on tuhoisaa.',
+    'Ilo on elämän suola.',
+    'Suru on luonnollinen reaktio.',
+    'Pelko suojelee vaaroilta.',
+    'Rohkeus voittaa pelon.',
+    'Toivo pitää elossa.',
+    'Epätoivo on synkkää.',
+    'Luottamus rakentaa suhteita.',
+    'Epäluulo hajottaa yhteyttä.',
+    'Kateus on myrkkyä.',
+    'Ylpeys voi olla hyvästä.',
+    'Nöyryys on hyve.',
+    'Ahneus johtaa tuhoon.',
+    'Anteliaisuus rikastuttaa.',
+    'Kiitollisuus lisää onnellisuutta.',
+    'Katkeruus syö sisältä.',
+    'Surulle pitää antaa tilaa.',
+    'Ilolla on tarttuva vaikutus.',
+    'Rauhassa on voimaa.',
+    'Kiire stressaa.',
+    'Rentoutuminen on tärkeää.',
+    'Stressi haittaa terveyttä.',
+    'Hyvinvointi on kokonaisvaltaista.',
+    'Terveys on rikkaus.',
+    'Sairaus opettaa arvostamaan.',
+    'Kipu on varoitusmerkki.',
+    'Paraneminen vie aikaa.',
+    'Toipuminen vaatii lepoa.',
+    'Lepo uudistaa voimia.',
+    'Uni on tärkeää.',
+    'Väsymys hidastaa.',
+    'Energia on voimavara.',
+    'Motivaatio vie eteenpäin.',
+    'Tahtotila määrää suunnan.',
+    'Päämäärä ohjaa toimintaa.',
+    'Tavoite kannustaa.',
+    'Unelma innoittaa.',
+    'Haave antaa toivoa.',
+    'Todellisuus on kovaa.',
+    'Mielikuvitus on rajaton.',
+    'Luovuus rikkoo rajoja.',
+    'Innovaatio vie eteenpäin.',
+    'Kehitys on jatkuvaa.',
+    'Muutos on väistämätöntä.',
+    'Pysyvyys on harvinaista.',
+    'Katoavaisuus on luonnollista.',
+    'Ikuisuus on käsittämätöntä.',
+    'Hetki on arvokas.',
+    'Nykyisyys on ainoa varma.',
+    'Hyvää huomenta kaikille!',
+    'Mitä kuuluu sinulle tänään?',
+    'Kaikki hyvin täällä, kiitos.',
+    'Toivottavasti päivä sujuu mukavasti.',
+    'Mukavaa viikonloppua sinulle!',
+    'Nähdään taas huomenna.',
+    'Pidä huolta itsestäsi.',
+    'Ole hyvä ja avaa ovi.',
+    'Kiitos avusta, arvostan sitä.',
+    'Anteeksi myöhästyminen.',
+    'Ei haittaa, tapahtuupa.',
+    'Olkaa hyvä ja istukaa.',
+    'Saanko tarjota kahvia?',
+    'Kyllä kiitos, otan mielelläni.',
+    'Ei kiitos, olen jo juonut.',
+    'Voisitko auttaa minua hetkeksi?',
+    'Totta kai, mielelläni.',
+    'Valitettavasti en ehdi juuri nyt.',
+    'Ymmärrän tilanteesi hyvin.',
+    'Se on todella ikävää.',
+    'Onnea matkaan sinulle!',
+    'Menestystä uudessa työssä!',
+    'Onnea syntymäpäivänäsi!',
+    'Hyvää joulua ja uutta vuotta!',
+    'Iloista pääsiäistä!',
+    'Hyvää kesää kaikille!',
+    'Mukavaa lomaa sinulle!',
+    'Paljon onnea uuteen kotiin!',
+    'Onneksi olkoon valmistumisesta!',
+    'Kaikkea hyvää tulevaisuuteen!',
+    'Hoidathan asian kuntoon?',
+    'Hoidan asian välittömästi.',
+    'Otan asian selvitykseen.',
+    'Palaan asiaan myöhemmin.',
+    'Kuulostaa hyvältä suunnitelmalta.',
+    'Tuo on erinomainen idea.',
+    'Mielenkiintoinen näkökulma asiaan.',
+    'En ole samaa mieltä.',
+    'Ymmärrän pointtisi kyllä.',
+    'Totta puhuen en tiedä.',
+    'Minulla ei ole mielipidettä.',
+    'Asia on monimutkainen.',
+    'Tilanne on vaikea.',
+    'Ratkaisu löytyy varmasti.',
+    'Kyllä tämä tästä järjestyy.',
+    'Ei hätää, selvitetään yhdessä.',
+    'Homma hoituu kyllä.',
+    'Turha huolehtia turhasta.',
+    'Kaikki järjestyy aikanaan.',
+    'Kärsivällisyys on hyve tässäkin.',
+]
+
+# Generate additional negative examples using templates
+NEGATIVE_TEMPLATES = [
+    'Päivä oli {adj} ja {adv} onnistunut.',
+    'Tilanne näyttää {adj} ja {adv} selvältä.',
+    'Homma on {adj} mutta {adv} hoidettavissa.',
+    'Asia tuntuu {adj} ja {adv} monimutkaiselta.',
+    'Lopputulos oli {adj} ja {adv} tyydyttävä.',
+    'Kokemus oli {adj} ja {adv} opettavainen.',
+    'Tilaisuus oli {adj} ja {adv} järjestetty.',
+    'Projekti eteni {adv} ja oli {adj}.',
+    'Suunnitelma vaikuttaa {adj} ja {adv} toteutettavalta.',
+    'Idea kuulostaa {adj} ja {adv} kiinnostavalta.',
     'Etelä-Suomessa sataa vettä ja Pohjois-Suomessa on pakkasta.',
     'Itä-Helsingin alueella asuu paljon ihmisiä, mutta Länsi-Helsingissä on enemmän puistoja.',
     'Keskiviikkona kello 14.00 pidettiin kokous, jossa oli 15 osallistujaa.',
@@ -1190,182 +1693,3 @@ FALSE_POSITIVES = [
     'Elokuussa monet lomailevat ja nauttivat kesästä.',
     'Marraskuu on usein harmaa ja sateinen kuukausi Suomessa.'
 ]
-
-
-for sentence in FALSE_POSITIVES:
-    doc = nlp(sentence)
-    c = 0
-    entities = []
-    for s in sentence.split(' '):
-        start = c
-        end = start + len(s)
-        entities.append([start, end, 'O'])
-        c = end + 1
-
-    example: Example = Example.from_dict(doc, {"entities": entities})
-    TRAIN_DATA.append(example)
-
-EVAL_DATA = []
-for i in range(0, len(EVALUATION_SENTENCES)):
-    sentence = EVALUATION_SENTENCES[i]
-    s = EVALUATION_VALUES[i]
-    label = EVALUATION_LABELS[i]
-    if s:
-        sentence, start, end = generate_evaluation_sentence(s.lower(), sentence)
-        doc = nlp(sentence)
-        entities = [[start, end, label]]
-        example: Example = Example.from_dict(doc, {"entities": entities})
-    else:
-        example: Example = Example.from_dict(nlp(sentence), {"entities": []})
-    EVAL_DATA.append(example)
-
-# Heikki on kissa
-# {text: 'Heikki on kissa', entities=[[14, 17, 'ELÄIN']]}
-
-def train(training_iterations=1, score_threshold=0, verbose=False):
-
-    print("Train Spacy NER model with names. Iterations = {i}, score threshold = {s}".format(i=training_iterations, s=score_threshold))
-    print("using {l} sentences".format(l=len(TRAIN_DATA)))
-    print("- containing  {n} examples with generated names.".format(n=len(NAME_LIST)))
-    print("- containing  {n} examples with streets.".format(n=len(STREET_LIST)))
-    print("- containing  {n} examples with areas.".format(n=len(AREA_LIST)))
-    print("- containing  {n} examples with random sentences.".format(n=len(FALSE_POSITIVES)))
-
-    # NER training
-    def evaluate(nlp, data, verbose=False):
-        scores = nlp.evaluate(data)
-        if "ents_p" in scores:
-            precision = scores["ents_p"]
-            recall = scores["ents_r"]
-            f1_score = scores["ents_f"]
-            if verbose:
-                print(f"Precision: {precision:.4f}")
-                print(f"Recall: {recall:.4f}")
-                print(f"F1 Score: {f1_score:.4f}")
-        if "ents_per_type" in scores:
-            per_type = scores["ents_per_type"]
-            if verbose:
-                for entity_type, metrics in per_type.items():
-                    print(f"{entity_type}: Precision: {metrics['p']:.4f}, Recall: {metrics['r']:.4f}, F1: {metrics['f']:.4f}")
-        else:
-            if verbose:
-                print("No entity types found", scores)
-        return scores
-
-    if exec_ruler:
-        if "entity_ruler" not in nlp.pipe_names:
-            ruler = nlp.add_pipe("entity_ruler", after="ner", config={"phrase_matcher_attr": "LOWER", "overwrite_ents": True})
-        else:
-            ruler = nlp.get_pipe("entity_ruler")
-        ruler.add_patterns(build_patterns(_PRODUCTS, 'PRODUCT'))
-        ruler.add_patterns(build_patterns(_STREETS, STREET_ENTITY))
-        ruler.add_patterns(build_patterns(_AREAS, AREA_ENTITY))
-        ruler.add_patterns(build_patterns(_ORGANIZATIONS, 'ORG'))
-        ruler.add_patterns(build_patterns(_SKIP, 'O'))
-        print("Evaluate after entity ruler update")
-        evaluate(nlp, EVAL_DATA, verbose=verbose)
-
-    if exec_ner:
-        n_iter = training_iterations
-
-        score = evaluate(nlp, EVAL_DATA)
-        print(f"Scores before update: {score}")
-
-        # Early stopping parameters
-        best_f1 = 0
-        patience = 5
-        patience_counter = 0
-        metrics_history = {'loss': [], 'val_f1': [], 'val_precision': [], 'val_recall': []}
-
-        other_pipes = [pipe for pipe in nlp.pipe_names if pipe != 'ner']
-        with nlp.disable_pipes(*other_pipes):  # only train NER
-            optimizer = nlp.resume_training()
-            for i in range(n_iter):  # Number of training iterations
-                # Batch up the examples using spaCy's minibatch
-                random.shuffle(TRAIN_DATA)
-                losses = {}
-                # Update the model with the new examples
-                batches = minibatch(TRAIN_DATA, size=compounding(4.0, 32.0, 1.001))
-                for batch in batches:
-                    nlp.update(batch, drop=0.5, losses=losses, sgd=optimizer)
-
-                # Evaluate on validation set
-                val_scores = evaluate(nlp, EVAL_DATA, verbose=False)
-                current_f1 = val_scores.get("ents_f") or 0.0
-                current_precision = val_scores.get("ents_p") or 0.0
-                current_recall = val_scores.get("ents_r") or 0.0
-
-                # Track metrics
-                metrics_history['loss'].append(losses.get('ner', 0.0))
-                metrics_history['val_f1'].append(current_f1)
-                metrics_history['val_precision'].append(current_precision)
-                metrics_history['val_recall'].append(current_recall)
-
-                if verbose or i % 5 == 0:
-                    print(f"Iteration {i+1}/{n_iter}: Loss={losses.get('ner', 0.0):.4f}, Eval F1={current_f1:.4f}, Eval Precision={current_precision:.4f}, Eval Recall={current_recall:.4f}")
-
-                # Early stopping check
-                if current_f1 > best_f1:
-                    best_f1 = current_f1
-                    patience_counter = 0
-                    if verbose:
-                        print(f"  → New best F1: {best_f1:.4f}")
-                else:
-                    patience_counter += 1
-                    if patience_counter >= patience:
-                        print(f"Early stopping at iteration {i+1} (no improvement for {patience} iterations)")
-                        break
-
-        for p in other_pipes:
-            nlp.enable_pipe(p)
-
-        print(f"\nBest validation F1 score: {best_f1:.4f}")
-        print(f"Final metrics - Precision: {metrics_history['val_precision'][-1]:.4f}, Recall: {metrics_history['val_recall'][-1]:.4f}")
-    test_score = 0
-    eval_results = evaluate_nlp(nlp)
-
-    if exec_test:
-        print("\nAfter training test coverage is now: ")
-        test_score = run_test(amount=100)
-        print(f"\nScores after entity ruler update:")
-        scores = evaluate(nlp, EVAL_DATA)
-        print(scores)
-
-    if save_model:
-        if test_score > score_threshold:
-            print(f"Saving model with score {test_score} to {target_path}")
-            nlp.to_disk(target_path)
-        else:
-            print(f"Model test score {test_score} is below threshold {score_threshold}, not saving model.")
-    return test_score, eval_results
-
-
-if __name__ == "__main__":
-    iterations = [30]  # Increased from 1 to 30 for better training with early stopping
-    test_score = 0
-    highest_score = 0
-    results = []
-    timestamp = datetime.datetime.now().strftime('%Y.%m.%d %H:%M')
-    with open(f"logs/training_{timestamp}.txt", "a") as f:
-        f.write(f"NAMES: {NAMES_TEST_DATA_SIZE} ")
-        f.write(f"STREETS: {STREETS_TEST_DATA_SIZE} ")
-        f.write(f"AREAS: {AREAS_TEST_DATA_SIZE} \n")
-    for i in iterations:
-        print(f"\n\n\nTraining with {i} iterations\n\n\n")
-        test_score, eval_results = train(training_iterations=i, score_threshold=highest_score)
-        print(f"Test score after {i} iterations: {test_score}")
-        if test_score > highest_score:
-            highest_score = test_score
-        # log to file
-        with open("training.log", "a") as f:
-            f.write(f"{datetime.datetime.now().strftime('%Y.%m.%d %H:%M')}: Training with {i} iterations. Test score: {test_score}. Model {base_model}.  Augmented training data: Names {NAMES_TEST_DATA_SIZE}, Streets {STREETS_TEST_DATA_SIZE}, Areas {AREAS_TEST_DATA_SIZE}\n")
-        stats = "Iterations " + str(i) + ". Test_score: " + str(test_score) + "\n" + eval_results + "\n\n\n"
-        results.append(stats)
-        # Full report
-        with open(f"logs/training_{timestamp}.txt", "a") as f:
-            f.write("Training run: " + datetime.datetime.now().strftime('%Y.%m.%d %H:%M') + "\n")
-            f.write(stats)
-
-    # finally print the results
-    for r in results:
-        print(r)

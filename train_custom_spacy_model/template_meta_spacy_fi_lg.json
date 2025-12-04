@@ -1,13 +1,13 @@
 {
   "lang":"fi",
   "name":"datahel_spacy",
-  "version":"0.0.2",
-  "description":"Modified version of core_news_lg by explosion.ai for city anonymization purposes. Components: tok2vec, tagger, morphologizer, parser, lemmatizer (trainable_lemmatizer), senter, ner.",
+  "version":"0.0.3",
+  "description":"Fine tuned version of core_news_lg by explosion.ai for city anonymization purposes. Components: tok2vec, tagger, morphologizer, parser, lemmatizer (trainable_lemmatizer), senter, ner.",
   "author":"DataHel, City of Helsinki",
   "email":"",
   "url":"https://github.com/City-of-Helsinki",
   "license":"CC BY-SA 4.0",
-  "spacy_version":">=3.7.0,<3.8.0",
+  "spacy_version":">=3.8.0,<=3.9.0",
   "spacy_git_version":"6b4f77441",
   "vectors":{
     "width":300,

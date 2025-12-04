@@ -1,8 +1,12 @@
 import datetime
+from collections import defaultdict
 
 from spacy import load
 from spacy.training import Example
 from tabulate import tabulate
+from torch.backends.mkl import VERBOSE_ON
+
+from model_version import FINETUNED_MODEL_VERSION
 
 '''
 This script evaluates the trained model with a set of sentences.
@@ -11,10 +15,12 @@ The entity type is provided in the evaluation data.
 The script evaluates the model with the evaluation data and prints the results.
 '''
 
+VERBOSE_ON = False
+
 def evaluate_nlp(nlp=None):
     if not nlp:
         # Load trained model
-        model_path = "../custom_spacy_model/fi_datahel_spacy-0.0.2"
+        model_path = f"../custom_spacy_model/{FINETUNED_MODEL_VERSION}"
         nlp = load(model_path)
 
     # Entity types
@@ -48,7 +54,7 @@ def evaluate_nlp(nlp=None):
         ("Havaittu vakava vaurio {} 15:n kohdalla, joka voi aiheuttaa vaaratilanteita.", "Aleksanterinkatu", LOC),
         ("{} 5:n edessä oleva tie on erittäin huonossa kunnossa ja tarvitsee pikaisen korjauksen.", "Erottajankatu", LOC),
         ("Olen erittäin tyytymätön keskusta-aluueen talvikunnossapitoon, erityisesti {} osalta.", "mannerheimintien", LOC),
-        ("Kaupungininsinööri {} ansaitsee kiitoksen panoksestaan kaupungin it-koulutusjärjestelmän kehittämisessä.", "Akusti Kesti", PERSON),
+        ("Kaupungininsinööri {} ansaitsee kiitoksen panoksestaan kaupungin it-koulutusjärjestelmän kehittämisessä.", "Aukusti Kesti", PERSON),
         ("Toivon, että {} kunnossapitoon panostettaisiin enemmän, sillä liikennemäärät ovat kasvussa.", "pohjoisesplanadin", LOC),
         ("Kiitos kaupungin kesätyöntekijöille, jotka ovat pitäneet {} paikat siistinä ja istutukset kauniina.", "fredrikinkadulla", LOC),
         ("Tiedoksi että {} 2 kohdalla katuvalo on ollut pimeänä jo usean viikon ajan.", "kalevankatu", LOC),
@@ -69,7 +75,7 @@ def evaluate_nlp(nlp=None):
         ("Olemme erittäin pettyneitä siihen, että {} jalkakäytävä on jatkuvasti huonossa kunnossa.", "soidinkujan", LOC),
         ("Toivoisin että {} pyöräilyolosuhteita parannettaisiin, jotta turvallinen liikkuminen olisi mahdollista.", "Kaisaniemenkadun", LOC),
         # Wikipedia quotes with names or street names
-        ("Kampus sijaitsee Helsingin ydinkeskustassa Kruununhaan ja Kluuvin kaupunginosissa {} molemmin puoli", "Unioninkadun", LOC),
+        ("Kampus sijaitsee Helsingin ydinkeskustassa Kruununhaan ja Kluuvin kaupunginosissa {} molemmin puolin", "Unioninkadun", LOC),
         ("Vuonna 1869 vihittiin Senaatintorin vastakkaisella puolella käyttöön mahtava kemian laboratorio- ja museorakennus Arppeanum, jonka {} oli suunnitellut venetsialaiseen tyyliin.", "Carl Albert Edelfelt", PERSON),
         ("Ensimmäinen Tiedekulma avattiin vuonna 2012 yliopiston hallintorakennukseen osoitteeseen {} 7", "Aleksanterinkatu", LOC),
         ("Helsingin yliopiston päärakennus sijaitsee Senaatintorin laidalla osoitteessa {} 1", "Unioninkatu", LOC),
@@ -101,7 +107,7 @@ def evaluate_nlp(nlp=None):
         ("Maastopyöräilykisan voiton vei tällä kertaa ylivoimaisesti nuori ja lahjakas urheilija {}, joka on aiemminkin palkittu kyvyistään kovissa kilpailuissa.", "Sisu Asikainen", PERSON),
         ("Arkkitehti {}, joka on suunnitellut useita ekologisia asuintaloja, palkittiin viimeisimmästä projektistaan kestävän kehityksen messuilla.", "Lukas Koljonen", PERSON),
         ("Klassisen kitaran soittaja {} lumosi yleisön intensiivisellä tulkinnallaan Bachin teoksista viimeisimmällä Euroopan-kiertueellaan.", "Viking Leskinen", PERSON),
-        ("Maajussi-kilpailun voitti yllättäen {}, jonka lämminhenkiset ja ahkerat tavat voittivat sekä tuomariston että katsojien sydämet.", "Akusti Ikävalko", PERSON),
+        ("Maajussi-kilpailun voitti yllättäen {}, jonka lämminhenkiset ja ahkerat tavat voittivat sekä tuomariston että katsojien sydämet.", "Ahti Ikävalko", PERSON),
         ("Komediasarjan pääosaa näyttelevä {} on noussut uudeksi fanisuosikiksi hauskalla otteellaan ja luontevalla roolisuorituksellaan.", "Ylermi Toiviainen", PERSON),
         ("Tohtori {} esitteli eilen läpimurtotutkimustaan neurotieteiden konferenssissa, ja hänen työnsä saa varmasti jatkossakin paljon huomiota.", "Gideon Olli", PERSON),
         ("Reservin upseerikerhon vuosipäivää juhlisti puheenvuorollaan eversti {}, joka muisteli uransa merkittävimpiä hetkiä ja tapahtumia.", "Maxim Tiitinen", PERSON),
@@ -112,7 +118,7 @@ def evaluate_nlp(nlp=None):
         ("Vuonna 1968 {} hotelleissa majoittui noin 328 000 henkeä, joista runsaat 130 000 oli ulkomaalaisia.", "Helsingin", GPE),
         ("Vuoteen 2021 asti yleisilmailua varten käytössä oli pienempi {} lentoasema.", "Helsinki-Malmin", GPE),
         ("Vuonna 2011 {} satamassa oli 8 779 aluskäyntiä eli keskimäärin yli 24 laivaa joka päivä.", "Helsingin", GPE),
-        ("Helsingin päärautatieasema on Suomen matkustajaliikenteen keskus. Noin kolme kilometriä pohjoisemmalla {} rautatieasemalla rautatie haarautuu rantaratana länteen ja pääratana pohjoiseen.", "Pasilan", LOC),
+        ("Helsingin päärautatieasema on Suomen matkustajaliikenteen keskus. Noin kolme kilometriä pohjoisemmalla {} rautatieasemalla rautatie haarautuu rantaratana länteen ja pääratana pohjoiseen.", "Pasilan", GPE),
         ("Eräs merkittävä säteittäinen väylä on {}", "Itäväylä", LOC),
         ("Hotelliyöpymiset Helsingissä ovat lähes 13-kertaistuneet 50 vuodessa, ulkomaalaisten osalta lähes 18-kertaistuneet. Vuonna 2018 {} hotelleissa yöpyi lähes 4,2 miljoonaa henkeä, joista 2,3 miljoonaa ulkomaalaista.", "Helsingin", GPE),
         ("Veneilijöitä varten kaupungin rannoilla on {} laituripaikkaa.", "noin 12 000", CARDINAL),
@@ -143,65 +149,143 @@ def evaluate_nlp(nlp=None):
         ("Siinä kuvataan juhannuksen viettoa luonnonkauniissa {}.", "Kyläsaaressa", GPE)
     ]
 
-
     # Build examples from eval set
     all_eval_data = []
+    failed_predictions = defaultdict(list)
+
     for sentence, entity_value, entity_label in sentence_tuples:
-        # Build entities
-        start = sentence.index("{")
-        end = start + len(entity_value)
+        formatted_sentence = sentence.format(entity_value)
+
+        # Find entity position in formatted sentence
+        try:
+            start = formatted_sentence.index(entity_value)
+            end = start + len(entity_value)
+        except ValueError:
+            print(f"Warning: Entity '{entity_value}' not found in sentence: {formatted_sentence}")
+            continue
+
         entities = [[start, end, entity_label]]
-        # Setup example dict
         annotations = {"entities": entities}
+
         # Create example object
-        example = Example.from_dict(nlp.make_doc(sentence.format(entity_value)), annotations)
+        example = Example.from_dict(nlp.make_doc(formatted_sentence), annotations)
         all_eval_data.append(example)
 
+        # Check prediction for logging
+        doc = nlp(formatted_sentence)
+        expected_entity = (entity_value, entity_label, start, end)
+        predicted_entities = [(ent.text, ent.label_, ent.start_char, ent.end_char) for ent in doc.ents]
 
-    #
+        # Check if prediction matches expectation
+        prediction_match = False
+        matching_prediction = None
+
+        # 1. Check for an exact match first
+        for pred_text, pred_label, pred_start, pred_end in predicted_entities:
+            if pred_label == entity_label and pred_start == start and pred_end == end:
+                prediction_match = True
+                matching_prediction = [(pred_text, pred_label, pred_start, pred_end)]
+                break
+
+        # 2. If no exact match, check for combined overlapping entities
+        if not prediction_match:
+            # Find all predicted entities with the correct label that overlap with the expected span
+            overlapping_entities = [
+                (text, label, s, e) for text, label, s, e in predicted_entities
+                if label == entity_label and not (e <= start or s >= end)  # Check for any overlap
+            ]
+
+            if overlapping_entities:
+                # Combine the character spans of all overlapping entities
+                covered_chars = set()
+                for _, _, s, e in overlapping_entities:
+                    covered_chars.update(range(s, e))
+
+                expected_chars = set(range(start, end))
+
+                # Calculate how much of the expected entity is covered
+                intersection_size = len(expected_chars.intersection(covered_chars))
+                expected_size = len(expected_chars)
+                coverage_ratio = intersection_size / expected_size if expected_size > 0 else 0
+
+                # If the combined entities cover at least 90% of the expected span, consider it a match.
+                # This threshold allows for missing spaces or minor tokenization differences.
+                if coverage_ratio >= 0.9:
+                    prediction_match = True
+                    matching_prediction = overlapping_entities
+
+        if not prediction_match:
+            failed_predictions[entity_label].append({
+                'sentence': formatted_sentence,
+                'expected': expected_entity,
+                'predicted': predicted_entities,
+                'note': 'Entity not detected, wrong label, or insufficient overlap'
+            })
+
     # Evaluation results
-    #
-
     eval_results = nlp.evaluate(all_eval_data)
     eval_results_data = eval_results['ents_per_type']
 
-    #
     # Info about the dataset
-    #
     entity_counts = {}
-    # Iterate over the evaluation data
     for example in all_eval_data:
-        # Access the entities
         for entity in example.reference.ents:
-            # Increment the count of the entity type
             entity_counts[entity.label_] = entity_counts.get(entity.label_, 0) + 1
 
-    # Combine the evaluation results and entity counts into markdown tables
+    # Combine evaluation results and entity counts
     for key, value in eval_results_data.items():
         for key2, value2 in entity_counts.items():
             if key == key2:
                 value['count'] = value2
 
-    # Convert the dictionary to a list of lists
+    # Convert to table
     eval_results_table_data = [[key] + list(values.values()) for key, values in eval_results_data.items()]
-    # Define the headers
     headers = ['Entity', 'precision', 'recall', 'f1-score', 'samples']
-
-    # Create the markdown table for evaluation results
     eval_results_markdown_table = tabulate(eval_results_table_data, headers, tablefmt="pipe")
 
-    #
     # Print results
-    #
     print("\n\n### Evaluation results for model")
     print("\nEvaluation dataset consists of {} sample sentences.\n".format(len(all_eval_data)))
-
-    print(f"\nDate: { datetime.datetime.now().strftime('%d.%m.%Y')}\n")
+    print(f"\nDate: {datetime.datetime.now().strftime('%d.%m.%Y')}\n")
     print("\nEvaluation results: \n")
     print(eval_results_markdown_table)
     print("")
+
+    # Print failed predictions
+    if failed_predictions and VERBOSE_ON:
+        print("\n### Failed Predictions\n")
+        for entity_type, failures in failed_predictions.items():
+            print(f"\n#### {entity_type} ({len(failures)} failures)\n")
+            for idx, failure in enumerate(failures, 1):
+                print(f"{idx}. Sentence: {failure['sentence']}")
+                exp_text, exp_label, exp_start, exp_end = failure['expected']
+                print(f"   Expected: '{exp_text}' as {exp_label} at position [{exp_start}:{exp_end}]")
+                if failure['predicted']:
+                    print(f"   Predicted:")
+                    for pred_text, pred_label, pred_start, pred_end in failure['predicted']:
+                        print(f"     - '{pred_text}' as {pred_label} at position [{pred_start}:{pred_end}]")
+                else:
+                    print(f"   Predicted: No entities detected")
+                print()
+
     return eval_results_markdown_table
 
 
 if __name__ == "__main__":
     evaluate_nlp()
+
+
+# Date: 01.12.2025
+#
+#
+# Evaluation results:
+#
+# | Entity   |   precision |   recall |   f1-score |   samples |
+# |:---------|------------:|---------:|-----------:|----------:|
+# | PERSON   |    0.527778 | 0.926829 |   0.672566 |        41 |
+# | DATE     |    0.134615 | 0.466667 |   0.208955 |        15 |
+# | ORG      |    0        | 0        |   0        |           |
+# | LOC      |    0.5      | 0.741935 |   0.597403 |        31 |
+# | CARDINAL |    0        | 0        |   0        |         4 |
+# | GPE      |    0.136364 | 0.857143 |   0.235294 |         7 |
+# | O        |    0        | 0        |   0        |         3 |

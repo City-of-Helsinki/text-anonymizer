@@ -42,7 +42,7 @@ class TextAnonymizer:
                  languages=['fi', 'en'],
                  settings: AnonymizerSettings = None,
                  recognizer_configuration: List[str] = None,
-                 debug_mode=False):
+                 debug_mode=False, entity_mapping=None):
         """
         Anonymizer initialization.
         :param operator_config: Option to control how entities are labeled in anonymization
@@ -93,7 +93,7 @@ class TextAnonymizer:
         self.languages = languages_cleaned
 
         # Setup selected recognizers
-        self.registry = RecognizerRegistry()
+        self.registry = RecognizerRegistry(supported_languages=self.languages)
 
         if RECOGNIZER_EMAIL in self.recognizer_configuration:
             email_recognizer_en = EmailRecognizer(supported_language='fi')
@@ -183,6 +183,7 @@ class TextAnonymizer:
         # Init engines
         provider = NlpEngineProvider(conf_file=self.CONFIG_FILE)
         self.nlp_engine = provider.create_engine()
+
         self.anonymizer_engine = AnonymizerEngine()
         self.analyzer_engine = AnalyzerEngine(
             log_decision_process=self.log_decision_process,

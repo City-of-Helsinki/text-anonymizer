@@ -1,7 +1,7 @@
 Alfa Romeo
 Audi
 Austin
-Autotarvikkeet yleiset
+Autotarvikkeet
 Bedford
 BMC
 BMW
@@ -35,13 +35,15 @@ Lexus
 Lincoln
 Maserati
 Mazda
+Maisa
 Mercedes-Benz
 Mg
 Mini
 Mitsubishi
 Moottorikelkka
 Mopoautot
-Mopot / Moottoripyörät
+Mopot
+Moottoripyörät
 Morris
 Moskvitsh
 Mönkijät
