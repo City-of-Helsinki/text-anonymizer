@@ -27,6 +27,11 @@ from text_anonymizer.regex_config_provider import get_regex_patterns
 
 logger = logging.getLogger(__name__)
 
+# Suppress excessive logging from external libraries
+logging.getLogger('presidio_analyzer').setLevel(logging.ERROR)
+logging.getLogger('presidio_anonymizer').setLevel(logging.ERROR)
+logging.getLogger('spacy').setLevel(logging.ERROR)
+
 
 class TextAnonymizer:
     SUPPORTED_LANGUAGES = ['fi', 'en']
