@@ -211,6 +211,78 @@ Open anonymizer web frontend in browser: http://127.0.0.1:8501
 
 You can test this using file: examples/files/sample.csv
 
+## Configuration guide
+
+### Configuration profiles
+
+You can use different configuration profiles to select different sets of recognizers and settings.
+Configuration profiles are located in config/<profile_name>/ folder. For default profile, folder is config/default/ and profile parameter is empty.
+
+### Custom regular expression recognizer
+
+RegexRecognizer is configurable general pattern recognizer that uses regex patterns defined in external configuration files. 
+
+Patterns are loaded from JSON files specifying regex patterns, entity names, and confidence scores. 
+The RegexRecognizer class uses these patterns to analyze input text and extract matching entities.
+
+RegexRecognizer supports profile configurations, allowing different sets of patterns to be used based on the specified profile.
+For example: For profile "custom", configuration path is: config/custom/regex_recognizer_config.json
+
+
+```
+┌──────────────────────┐
+│  Configuration File  │
+│  (JSON)              │
+│                      │
+│  Patterns:           │
+│  ├─ name             │
+│  ├─ regex pattern    │
+│  └─ confidence score │
+└──────────┬───────────┘
+           │
+           │ Load Patterns
+           │
+           ▼
+┌────────────────────────────┐
+│  RegexRecognizer           │
+│                            │
+│  __init__(patterns, ...)   │
+│  analyze(text)             │
+│  └─ Returns results        │
+└────────────────────────────┘
+```
+
+
+```json
+{
+  "PHONE_NUMBER": [
+    {
+      "name": "finnish_phone",
+      "pattern": "\\+358\\d{7,9}",
+      "score": 0.95
+    }
+  ]
+}
+```
+
+```
+Input: text = "Call me +359012345678"
+
+1. Load patterns from config cache
+2. For each pattern:
+   - Find all matches from text
+3. Create RecognizerResult for each match:
+   - entity_type (from pattern name)
+   - start position (based on match)
+   - end position (based on match)
+   - confidence score (score from config)
+4. Return results
+
+Output: [RecognizerResult, RecognizerResult, ...]
+```
+
+
+
 ## Accuracy
 
 Note that this tool cannot anonymize 100% of processed text. 

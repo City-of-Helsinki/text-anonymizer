@@ -1,0 +1,25 @@
+{
+  "EXAMPLE": [
+    {
+      "name": "code_pattern",
+      "pattern": "\\b(?:ABCxyz123|XYZabc321)\\b",
+      "score": 0.98
+    },
+    {
+      "name": "uppercase_code",
+      "pattern": "\\b[A-Z]{3}[0-9]{3,}\\b",
+      "score": 0.97
+    },
+    {
+      "name": "ticket_number",
+      "pattern": "TICKET-\\d{4,6}",
+      "score": 0.96
+    },
+    {
+      "name": "reference_code",
+      "pattern": "REF[A-Za-z0-9]{5,}\\b",
+      "score": 1.01
+    }
+  ]
+}
+

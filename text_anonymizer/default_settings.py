@@ -17,7 +17,9 @@ DEFAULT_SETTINGS.mask_mapppings = {
     'REAL_PROPERTY_ID': 'KIINTEISTÖTUNNUS',
     'PERSON': 'NIMI',
     'GRANTLISTED': 'GRANTLISTED',
-    'FILENAME': 'TIEDOSTONIMI'
+    'FILENAME': 'TIEDOSTONIMI',
+    'DIAARINUMERO': 'DIAARINUMERO',
+    'VIRKATITLE': 'VIRKATITLE'
 }
 DEFAULT_SETTINGS.mask_mappings_debug = {
     'ETUNIMI': 'VOIKKO_ETU_NIMI',
@@ -86,4 +88,5 @@ RECOGNIZER_CONFIGURATION_WEBAPP = [RECOGNIZER_EMAIL,
                                     RECOGNIZER_SPACY_FI,
                                     RECOGNIZER_SPACY_EN,
                                     RECOGNIZER_SPACY_ADDRESS,
+                                    RECOGNIZER_REGEX,
                                     ]

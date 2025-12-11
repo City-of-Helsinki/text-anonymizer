@@ -14,9 +14,14 @@ text_anonymizer = TextAnonymizer(languages=languages, debug_mode=debug)
 
 @anonymizer_api.post("/anonymize")
 def anonymize(request_data: AnonymizerApiRequest) -> AnonymizerApiResponse:
-    anonymizer_result = text_anonymizer.anonymize(request_data.text,
-                                                  user_languages=request_data.languages,
-                                                  user_recognizers=request_data.recognizers)
+    anonymizer_result = text_anonymizer.anonymize(
+        request_data.text,
+        user_languages=request_data.languages,
+        user_recognizers=request_data.recognizers,
+        profile=request_data.profile,
+        custom_blocklist=request_data.custom_blocklist,
+        custom_grantlist=request_data.custom_grantlist
+    )
 
     response: AnonymizerApiResponse = AnonymizerApiResponse()
     response.anonymized_txt = anonymizer_result.anonymized_text
@@ -28,9 +33,14 @@ def anonymize(request_data: AnonymizerApiRequest) -> AnonymizerApiResponse:
 def anonymize_batch(request_data: List[AnonymizerApiRequest]) -> List[AnonymizerApiResponse]:
     responses = []
     for request in request_data:
-        anonymizer_result = text_anonymizer.anonymize(request.text,
-                                                      user_languages=request.languages,
-                                                      user_recognizers=request.recognizers)
+        anonymizer_result = text_anonymizer.anonymize(
+            request.text,
+            user_languages=request.languages,
+            user_recognizers=request.recognizers,
+            profile=request.profile,
+            custom_blocklist=request.custom_blocklist,
+            custom_grantlist=request.custom_grantlist
+        )
 
         response: AnonymizerApiResponse = AnonymizerApiResponse()
         response.anonymized_txt = anonymizer_result.anonymized_text
