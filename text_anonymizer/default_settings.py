@@ -13,13 +13,11 @@ DEFAULT_SETTINGS.mask_mapppings = {
     'FI_SSN': 'HENKILÖTUNNUS',
     'IP_ADDRESS': 'IP-OSOITE',
     'IBAN_CODE': 'TILINUMERO',
-    'OTHER': 'KIELTOLISTA_TUNNISTE',
+    'OTHER': 'MUU_TUNNISTE',
     'REAL_PROPERTY_ID': 'KIINTEISTÖTUNNUS',
     'PERSON': 'NIMI',
     'GRANTLISTED': 'GRANTLISTED',
     'FILENAME': 'TIEDOSTONIMI',
-    'DIAARINUMERO': 'DIAARINUMERO',
-    'VIRKATITLE': 'VIRKATITLE'
 }
 DEFAULT_SETTINGS.mask_mappings_debug = {
     'ETUNIMI': 'VOIKKO_ETU_NIMI',
@@ -38,9 +36,9 @@ DEFAULT_SETTINGS.mask_mappings_debug = {
     'IBAN_CODE': 'TILINUMERO',
     'OTHER': 'TUNNISTE',
     'REAL_PROPERTY_ID': 'KIINTEISTÖTUNNUS',
-    'PERSON': 'NER_NIMI',
+    'PERSON': 'NIMI',
 }
-
+# The GRANTLISTED operator is configured to be not masked (chars_to_mask=0)
 DEFAULT_SETTINGS.operator_config = {
     "GRANTLISTED": OperatorConfig("mask", {'chars_to_mask': 0, 'masking_char': '*', 'from_end': False}),
 }
