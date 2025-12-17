@@ -18,10 +18,10 @@ class AnonymizerApiRequest(BaseModel):
     class Config:
         json_schema_extra = {
             "example": {
-                "text": "Hei, olen Erkki Esimerkki, erkki.esimerkki@example.com. "
-                        "Hi! My name is John Doe, john.doe@example.com",
-                "languages": ["fi", "en"],
+                "text": "Hei, olen Erkki Esimerkki, example123 ryhmästä, erkki.esimerkki@example123.com. "
+                        "Hi! My name is John Doe, group: example123, email:john.doe@example123.com",
+                "languages": ["fi"],
                 "recognizers": [k for k in DEFAULT_SETTINGS.mask_mapppings.keys()],
-                "profile": "palautteet"
+                "profile": "example"
             }
         }

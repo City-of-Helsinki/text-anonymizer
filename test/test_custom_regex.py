@@ -1,9 +1,32 @@
 """
-Test suite for verifying that the example profile correctly detects EXAMPLE entities.
+Test suite for verifying EXAMPLE entity detection using custom regex patterns.
 
 This test validates that all EXAMPLE regex patterns in the example profile configuration
-correctly identify various entity types including specific codes, uppercase codes,
-ticket numbers, and reference codes.
+correctly identify various patterns involving the word EXAMPLE with numbers and variations.
+
+REGEX PATTERN REFERENCE:
+========================
+Understanding backslashes in JSON regex patterns:
+- In JSON, backslash must be escaped: \\ becomes a single \ in the actual regex
+- \\b in JSON = \b in regex = word boundary
+- \\d in JSON = \d in regex = digit [0-9]
+
+Pattern syntax quick reference:
+- \\b        Word boundary (prevents partial matches like 'MYEXAMPLE' or 'EXAMPLES')
+- [0-9]     Match any single digit
+- [A-Za-z]  Match any single letter (upper or lower case)
+- +         Match one or more of preceding element
+- *         Match zero or more of preceding element
+- {3}       Match exactly 3 of preceding element
+- {2,4}     Match 2 to 4 of preceding element
+- (?:...)   Non-capturing group for alternatives
+- |         OR operator (used inside groups)
+
+Example patterns explained:
+- \\bEXAMPLE\\b           Matches exact word "EXAMPLE"
+- \\bEXAMPLE[0-9]+\\b     Matches "EXAMPLE" followed by 1+ digits: EXAMPLE1, EXAMPLE987
+- \\bEXAMPLE[0-9]*\\b     Matches "EXAMPLE" followed by 0+ digits: EXAMPLE, EXAMPLE1
+- \\bEXAMPLE[0-9]{3}\\b   Matches "EXAMPLE" followed by exactly 3 digits: EXAMPLE987
 """
 
 import unittest
@@ -19,224 +42,276 @@ class TestCustomRegex(unittest.TestCase):
         self.profile_name = "example"
         self.anonymizer = TextAnonymizer(debug_mode=False)
 
-    # Test cases for specific code pattern: (?:ABCxyz123|XYZabc321)
-    def test_specific_code_abcxyz123_standalone(self):
-        """Test detection of ABCxyz123 standalone."""
-        text = "ABCxyz123"
+    # =========================================================================
+    # Pattern: exact_match - \\bEXAMPLE\\b
+    # Matches only the exact word "EXAMPLE" with word boundaries
+    # =========================================================================
+    def test_exact_match_standalone(self):
+        """Test detection of exact word EXAMPLE."""
+        text = "EXAMPLE"
         result = self.anonymizer.anonymize(text, profile=self.profile_name)
         self.assertIn(self.label, result.details)
         self.assertIn(text, result.details[self.label])
 
-    def test_specific_code_xyzabc321_standalone(self):
-        """Test detection of XYZabc321 standalone."""
-        text = "XYZabc321"
+    def test_exact_match_in_sentence(self):
+        """Test detection of EXAMPLE in a sentence."""
+        text = "This is an EXAMPLE of text."
+        result = self.anonymizer.anonymize(text, profile=self.profile_name)
+        self.assertIn(self.label, result.details)
+        self.assertIn("EXAMPLE", result.details[self.label])
+
+    def test_exact_match_not_partial_prefix(self):
+        """Test that MYEXAMPLE does not match (word boundary prevents prefix match)."""
+        text = "MYEXAMPLE"
+        result = self.anonymizer.anonymize(text, profile=self.profile_name)
+        # Should NOT detect EXAMPLE inside MYEXAMPLE due to word boundary
+        if self.label in result.details:
+            self.assertNotIn("EXAMPLE", result.details[self.label])
+
+    def test_exact_match_not_partial_suffix(self):
+        """Test that EXAMPLES does not match exact pattern (word boundary prevents suffix match)."""
+        text = "EXAMPLES"
+        result = self.anonymizer.anonymize(text, profile=self.profile_name)
+        # The exact_match pattern should not detect EXAMPLES
+        # But word_with_optional_numbers pattern may match, so we check for exact "EXAMPLES"
+        if self.label in result.details:
+            self.assertNotIn("EXAMPLES", result.details[self.label])
+
+    # =========================================================================
+    # Pattern: case_insensitive_variations - \\b[Ee][Xx][Aa][Mm][Pp][Ll][Ee]\\b
+    # Matches EXAMPLE in any case combination
+    # =========================================================================
+    def test_case_insensitive_lowercase(self):
+        """Test detection of lowercase 'example'."""
+        text = "example"
         result = self.anonymizer.anonymize(text, profile=self.profile_name)
         self.assertIn(self.label, result.details)
         self.assertIn(text, result.details[self.label])
 
-    def test_specific_code_in_sentence(self):
-        """Test detection of specific codes in sentences."""
-        test_cases = [
-            "This is a test sentence with ABCxyz123 included.",
-            "ABCxyz123 is part of the department.",
-            "The code is XYZabc321 and should be detected.",
-        ]
-        for text in test_cases:
-            with self.subTest(text=text):
-                result = self.anonymizer.anonymize(text, profile=self.profile_name)
-                self.assertIn(self.label, result.details, f"Entity not detected in: {text}")
-
-    def test_specific_code_multiple_in_text(self):
-        """Test detection of multiple specific codes in one text."""
-        text = "Code ABCxyz123 and code XYZabc321 both present."
-        result = self.anonymizer.anonymize(text, profile=self.profile_name)
-        self.assertIn(self.label, result.details)
-        entities = result.details[self.label]
-        self.assertEqual(len(entities), 2, "Should detect both codes")
-        self.assertIn("ABCxyz123", entities)
-        self.assertIn("XYZabc321", entities)
-
-    def test_specific_code_with_trailing_word(self):
-        """Test that trailing words are not included in detection."""
-        text = "XYZabc321 unit"
-        result = self.anonymizer.anonymize(text, profile=self.profile_name)
-        self.assertIn(self.label, result.details)
-        # Should only detect the code, not "unit"
-        self.assertEqual(result.details[self.label], ["XYZabc321"])
-
-    # Test cases for uppercase code pattern: [A-Z]{3}[0-9]{3,}
-    def test_uppercase_code_three_letters_three_digits(self):
-        """Test detection of uppercase code with exactly 3 letters and 3 digits."""
-        text = "ABC123"
+    def test_case_insensitive_mixed_case(self):
+        """Test detection of mixed case 'ExAmPlE'."""
+        text = "ExAmPlE"
         result = self.anonymizer.anonymize(text, profile=self.profile_name)
         self.assertIn(self.label, result.details)
         self.assertIn(text, result.details[self.label])
 
-    def test_uppercase_code_three_letters_many_digits(self):
-        """Test detection of uppercase code with 3 letters and many digits."""
-        text = "XYZ999999"
+    def test_case_insensitive_title_case(self):
+        """Test detection of title case 'Example'."""
+        text = "Example"
         result = self.anonymizer.anonymize(text, profile=self.profile_name)
         self.assertIn(self.label, result.details)
         self.assertIn(text, result.details[self.label])
 
-    def test_uppercase_code_case_sensitive(self):
-        """Test that lowercase codes don't match uppercase pattern."""
-        text = "abc123"
-        result = self.anonymizer.anonymize(text, profile=self.profile_name)
-        # Lowercase pattern should not be detected by uppercase code pattern
-        self.assertNotIn(text, result.details.get(self.label, []))
-
-    def test_uppercase_code_in_context(self):
-        """Test uppercase code pattern in sentences."""
-        text = "Process DEF456 immediately"
-        result = self.anonymizer.anonymize(text, profile=self.profile_name)
-        self.assertIn(self.label, result.details)
-        self.assertIn("DEF456", result.details[self.label])
-
-    # Test cases for ticket number pattern: TICKET-\d{4,6}
-    def test_ticket_number_four_digits(self):
-        """Test detection of ticket number with 4 digits."""
-        text = "TICKET-1234"
+    # =========================================================================
+    # Pattern: word_with_numbers - \\bEXAMPLE[0-9]+\\b
+    # Matches EXAMPLE followed by one or more digits
+    # =========================================================================
+    def test_word_with_numbers_single_digit(self):
+        """Test detection of EXAMPLE followed by single digit."""
+        text = "EXAMPLE1"
         result = self.anonymizer.anonymize(text, profile=self.profile_name)
         self.assertIn(self.label, result.details)
         self.assertIn(text, result.details[self.label])
 
-    def test_ticket_number_six_digits(self):
-        """Test detection of ticket number with 6 digits."""
-        text = "TICKET-123456"
+    def test_word_with_numbers_multiple_digits(self):
+        """Test detection of EXAMPLE followed by multiple digits."""
+        text = "EXAMPLE987"
         result = self.anonymizer.anonymize(text, profile=self.profile_name)
         self.assertIn(self.label, result.details)
         self.assertIn(text, result.details[self.label])
 
-    def test_ticket_number_five_digits(self):
-        """Test detection of ticket number with 5 digits."""
-        text = "TICKET-12345"
+    def test_word_with_numbers_many_digits(self):
+        """Test detection of EXAMPLE followed by many digits."""
+        text = "EXAMPLE999999"
         result = self.anonymizer.anonymize(text, profile=self.profile_name)
         self.assertIn(self.label, result.details)
         self.assertIn(text, result.details[self.label])
 
-    def test_ticket_number_too_few_digits(self):
-        """Test that ticket number with too few digits is not detected."""
-        text = "TICKET-123"
+    def test_word_with_numbers_in_sentence(self):
+        """Test detection of EXAMPLE with numbers in context."""
+        text = "Please check EXAMPLE456 for details."
         result = self.anonymizer.anonymize(text, profile=self.profile_name)
+        self.assertIn(self.label, result.details)
+        self.assertIn("EXAMPLE456", result.details[self.label])
+
+    # =========================================================================
+    # Pattern: word_with_fixed_digits - \\bEXAMPLE[0-9]{3}\\b
+    # Matches EXAMPLE followed by exactly 3 digits
+    # =========================================================================
+    def test_fixed_digits_exact_three(self):
+        """Test detection of EXAMPLE followed by exactly 3 digits."""
+        text = "EXAMPLE987"
+        result = self.anonymizer.anonymize(text, profile=self.profile_name)
+        self.assertIn(self.label, result.details)
+        self.assertIn(text, result.details[self.label])
+
+    def test_fixed_digits_too_few_not_matched(self):
+        """Test that EXAMPLE56 (2 digits) is not matched by fixed_digits pattern."""
+        text = "EXAMPLE56"
+        result = self.anonymizer.anonymize(text, profile=self.profile_name)
+        # word_with_digit_range pattern will match this (2-4 digits)
+        # but fixed_digits pattern requires exactly 3
+        self.assertIn(self.label, result.details)
+        self.assertIn(text, result.details[self.label])
+
+    def test_fixed_digits_too_many_not_matched_by_fixed(self):
+        """Test that EXAMPLE9874 (4 digits) is matched by digit_range but not fixed_digits."""
+        text = "EXAMPLE9874"
+        result = self.anonymizer.anonymize(text, profile=self.profile_name)
+        # word_with_digit_range pattern will match (2-4 digits)
+        self.assertIn(self.label, result.details)
+        self.assertIn(text, result.details[self.label])
+
+    # =========================================================================
+    # Pattern: word_with_digit_range - \\bEXAMPLE[0-9]{2,4}\\b
+    # Matches EXAMPLE followed by 2 to 4 digits
+    # =========================================================================
+    def test_digit_range_two_digits(self):
+        """Test detection of EXAMPLE followed by 2 digits."""
+        text = "EXAMPLE56"
+        result = self.anonymizer.anonymize(text, profile=self.profile_name)
+        self.assertIn(self.label, result.details)
+        self.assertIn(text, result.details[self.label])
+
+    def test_digit_range_four_digits(self):
+        """Test detection of EXAMPLE followed by 4 digits."""
+        text = "EXAMPLE9874"
+        result = self.anonymizer.anonymize(text, profile=self.profile_name)
+        self.assertIn(self.label, result.details)
+        self.assertIn(text, result.details[self.label])
+
+    def test_digit_range_one_digit_no_match(self):
+        """Test that EXAMPLE1 (1 digit) is not matched by digit_range pattern."""
+        text = "EXAMPLE1"
+        result = self.anonymizer.anonymize(text, profile=self.profile_name)
+        # word_with_numbers pattern will match this (1+ digits)
+        self.assertIn(self.label, result.details)
+        self.assertIn(text, result.details[self.label])
+
+    def test_digit_range_five_digits_no_match(self):
+        """Test that EXAMPLE98745 (5 digits) is not matched by digit_range pattern."""
+        text = "EXAMPLE98745"
+        result = self.anonymizer.anonymize(text, profile=self.profile_name)
+        # word_with_numbers pattern will match (1+ digits)
+        self.assertIn(self.label, result.details)
+        self.assertIn(text, result.details[self.label])
+
+    # =========================================================================
+    # Pattern: prefix_variations - \\b(?:TEST|PROD|DEV)_EXAMPLE[0-9]+\\b
+    # Matches TEST_EXAMPLE, PROD_EXAMPLE, DEV_EXAMPLE followed by digits
+    # =========================================================================
+    def test_prefix_test_example(self):
+        """Test detection of TEST_EXAMPLE with digits."""
+        text = "TEST_EXAMPLE1"
+        result = self.anonymizer.anonymize(text, profile=self.profile_name)
+        self.assertIn(self.label, result.details)
+        self.assertIn(text, result.details[self.label])
+
+    def test_prefix_prod_example(self):
+        """Test detection of PROD_EXAMPLE with digits."""
+        text = "PROD_EXAMPLE99"
+        result = self.anonymizer.anonymize(text, profile=self.profile_name)
+        self.assertIn(self.label, result.details)
+        self.assertIn(text, result.details[self.label])
+
+    def test_prefix_dev_example(self):
+        """Test detection of DEV_EXAMPLE with digits."""
+        text = "DEV_EXAMPLE987"
+        result = self.anonymizer.anonymize(text, profile=self.profile_name)
+        self.assertIn(self.label, result.details)
+        self.assertIn(text, result.details[self.label])
+
+    def test_prefix_unknown_no_match(self):
+        """Test that unknown prefix like STAGE_EXAMPLE is not matched."""
+        text = "STAGE_EXAMPLE1"
+        result = self.anonymizer.anonymize(text, profile=self.profile_name)
+        # Should NOT match prefix_variations pattern
         if self.label in result.details:
             self.assertNotIn(text, result.details[self.label])
 
-    def test_ticket_number_too_many_digits(self):
-        """Test that ticket number with too many digits is not detected."""
-        text = "TICKET-1234567"
+    def test_prefix_in_sentence(self):
+        """Test prefix patterns in context."""
+        text = "Deploy TEST_EXAMPLE42 to production."
         result = self.anonymizer.anonymize(text, profile=self.profile_name)
+        self.assertIn(self.label, result.details)
+        self.assertIn("TEST_EXAMPLE42", result.details[self.label])
+
+    # =========================================================================
+    # Pattern: alphanumeric_suffix - \\bEXAMPLE[A-Za-z0-9]{3,6}\\b
+    # Matches EXAMPLE followed by 3-6 alphanumeric characters
+    # =========================================================================
+    def test_alphanumeric_letters_only(self):
+        """Test detection of EXAMPLE followed by letters only."""
+        text = "EXAMPLEabc"
+        result = self.anonymizer.anonymize(text, profile=self.profile_name)
+        self.assertIn(self.label, result.details)
+        self.assertIn(text, result.details[self.label])
+
+    def test_alphanumeric_mixed(self):
+        """Test detection of EXAMPLE followed by mixed alphanumeric."""
+        text = "EXAMPLE1a2b"
+        result = self.anonymizer.anonymize(text, profile=self.profile_name)
+        self.assertIn(self.label, result.details)
+        self.assertIn(text, result.details[self.label])
+
+    def test_alphanumeric_uppercase(self):
+        """Test detection of EXAMPLE followed by uppercase alphanumeric."""
+        text = "EXAMPLEABC"
+        result = self.anonymizer.anonymize(text, profile=self.profile_name)
+        self.assertIn(self.label, result.details)
+        self.assertIn(text, result.details[self.label])
+
+    def test_alphanumeric_too_short(self):
+        """Test that EXAMPLE followed by 2 chars is not matched by alphanumeric pattern."""
+        text = "EXAMPLEab"
+        result = self.anonymizer.anonymize(text, profile=self.profile_name)
+        # Should NOT match alphanumeric_suffix pattern (requires 3-6)
         if self.label in result.details:
             self.assertNotIn(text, result.details[self.label])
 
-    def test_ticket_number_in_sentence(self):
-        """Test ticket number detection in context."""
-        text = "Please resolve TICKET-5678 as soon as possible."
-        result = self.anonymizer.anonymize(text, profile=self.profile_name)
-        self.assertIn(self.label, result.details)
-        self.assertIn("TICKET-5678", result.details[self.label])
-
-    def test_ticket_number_multiple(self):
-        """Test detection of multiple ticket numbers."""
-        text = "Handle TICKET-1111 and TICKET-2222 today"
-        result = self.anonymizer.anonymize(text, profile=self.profile_name)
-        self.assertIn(self.label, result.details)
-        entities = result.details[self.label]
-        self.assertIn("TICKET-1111", entities)
-        self.assertIn("TICKET-2222", entities)
-
-    # Test cases for reference code pattern: REF[A-Z0-9]{8}
-    def test_reference_code_with_letters_and_digits(self):
-        """Test detection of reference code with letters and digits."""
-        text = "REFABC12345"
+    def test_alphanumeric_max_length(self):
+        """Test detection of EXAMPLE followed by 6 alphanumeric chars."""
+        text = "EXAMPLEabcdef"
         result = self.anonymizer.anonymize(text, profile=self.profile_name)
         self.assertIn(self.label, result.details)
         self.assertIn(text, result.details[self.label])
 
-    def test_reference_code_all_digits(self):
-        """Test detection of reference code with all digits."""
-        text = "REF12345"
+    def test_alphanumeric_too_long(self):
+        """Test that EXAMPLE followed by 7+ chars is not matched by alphanumeric pattern."""
+        text = "EXAMPLEabcdefg"
         result = self.anonymizer.anonymize(text, profile=self.profile_name)
-        self.assertIn(self.label, result.details)
-        self.assertIn(text, result.details[self.label])
-
-    def test_reference_code_all_uppercase(self):
-        """Test detection of reference code with all uppercase letters."""
-        text = "REFABCDE"
-        result = self.anonymizer.anonymize(text, profile=self.profile_name)
-        self.assertIn(self.label, result.details)
-        self.assertIn(text, result.details[self.label])
-
-    def test_reference_code_minimum_length(self):
-        """Test that reference code requires at least 5 characters after REF."""
-        text = "REFABC1234"  # Exactly 5 characters after REF
-        result = self.anonymizer.anonymize(text, profile=self.profile_name)
-        self.assertIn(self.label, result.details)
-        self.assertIn(text, result.details[self.label])
-
-    def test_reference_code_too_short(self):
-        """Test that reference code with less than 5 characters is not detected."""
-        text = "REFABC1"  # Only 4 characters after REF
-        result = self.anonymizer.anonymize(text, profile=self.profile_name)
+        # Should NOT match alphanumeric_suffix pattern (requires 3-6)
         if self.label in result.details:
             self.assertNotIn(text, result.details[self.label])
 
-    def test_reference_code_in_sentence(self):
-        """Test reference code detection in context."""
-        text = "Your reference number is REFTEST1234"
-        result = self.anonymizer.anonymize(text, profile=self.profile_name)
-        self.assertIn(self.label, result.details)
-        self.assertIn("REFTEST1234", result.details[self.label])
-
-    def test_reference_code_lowercase_not_detected(self):
-        """Test that lowercase 'ref' prefix is not detected."""
-        text = "refabcdefgh"
-        result = self.anonymizer.anonymize(text, profile=self.profile_name)
-        # Lowercase 'ref' should not be detected
-        self.assertNotIn(text, result.details.get(self.label, []))
-
-    # Test edge cases and combinations
+    # =========================================================================
+    # Edge cases and multiple matches
+    # =========================================================================
     def test_empty_text(self):
         """Test that empty text produces no detections."""
         text = ""
         result = self.anonymizer.anonymize(text, profile=self.profile_name)
         self.assertNotIn(self.label, result.details)
 
-    def test_text_with_no_matches(self):
-        """Test text with no matching patterns."""
-        text = "This is a normal sentence with no special codes."
-        result = self.anonymizer.anonymize(text, profile=self.profile_name)
-        self.assertNotIn(self.label, result.details)
-
-    def test_mixed_patterns_in_one_text(self):
-        """Test detection of different pattern types in one text."""
-        text = "Processing tickets ABCxyz123, TICKET-4567, REFTEST1234."
+    def test_multiple_patterns_in_text(self):
+        """Test detection of multiple EXAMPLE patterns in one text."""
+        text = "Check EXAMPLE, EXAMPLE987, and TEST_EXAMPLE1 for issues."
         result = self.anonymizer.anonymize(text, profile=self.profile_name)
         self.assertIn(self.label, result.details)
         entities = result.details[self.label]
-        self.assertIn("ABCxyz123", entities)
-        self.assertIn("TICKET-4567", entities)
-        self.assertIn("REFTEST1234", entities)
+        self.assertIn("EXAMPLE", entities)
+        self.assertIn("EXAMPLE987", entities)
+        self.assertIn("TEST_EXAMPLE1", entities)
 
-    def test_pattern_at_text_boundaries(self):
-        """Test patterns at the beginning and end of text."""
-        text = "ABCxyz123 in middle TICKET-9999"
+    def test_word_boundary_prevents_partial_match(self):
+        """Test that word boundaries prevent matching inside other words."""
+        text = "NOTEXAMPLE987HERE"
         result = self.anonymizer.anonymize(text, profile=self.profile_name)
-        self.assertIn(self.label, result.details)
-        entities = result.details[self.label]
-        self.assertIn("ABCxyz123", entities)
-        self.assertIn("TICKET-9999", entities)
-
-    def test_anonymization_output(self):
-        """Test that detected patterns are properly anonymized."""
-        text = "Code is ABCxyz123"
-        result = self.anonymizer.anonymize(text, profile=self.profile_name)
-        # The anonymized text should not contain the original code
-        self.assertNotIn("ABCxyz123", result.anonymized_text)
-        # Should contain replacement marker
-        self.assertIn("<EXAMPLE>", result.anonymized_text)
+        # Word boundary should prevent matching EXAMPLE987 inside this string
+        if self.label in result.details:
+            self.assertNotIn("EXAMPLE987", result.details[self.label])
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
 

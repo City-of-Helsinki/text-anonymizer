@@ -28,8 +28,8 @@ from text_anonymizer.regex_config_provider import get_regex_patterns
 logger = logging.getLogger(__name__)
 
 # Suppress excessive logging from external libraries
-logging.getLogger('presidio_analyzer').setLevel(logging.ERROR)
-logging.getLogger('presidio_anonymizer').setLevel(logging.ERROR)
+logging.getLogger('presidio-anonymizer').setLevel(logging.ERROR)
+logging.getLogger("presidio-analyzer").setLevel(logging.ERROR)
 logging.getLogger('spacy').setLevel(logging.ERROR)
 
 
@@ -206,7 +206,7 @@ class TextAnonymizer:
                         supported_entity=entity_type
                     )
                     registry.add_recognizer(regex_recognizer)
-                    logger.info(f"Added {len(patterns)} regex patterns for {entity_type} from profile {profile_name}")
+                    logger.debug(f"Added {len(patterns)} regex patterns for {entity_type} from profile {profile_name}")
 
             # Load profile blocklist
             blocklist = profile_manager.load_profile_blocklist(profile_name)
@@ -217,7 +217,7 @@ class TextAnonymizer:
                     deny_list=list(blocklist)
                 )
                 registry.add_recognizer(block_list_recognizer)
-                logger.info(f"Added {len(blocklist)} items to blocklist from profile {profile_name}")
+                logger.debug(f"Added {len(blocklist)} items to blocklist from profile {profile_name}")
 
             # Load profile grantlist
             grantlist = profile_manager.load_profile_grantlist(profile_name)
@@ -228,7 +228,7 @@ class TextAnonymizer:
                     deny_list=list(grantlist)
                 )
                 registry.add_recognizer(grant_list_recognizer)
-                logger.info(f"Added {len(grantlist)} items to grantlist from profile {profile_name}")
+                logger.debug(f"Added {len(grantlist)} items to grantlist from profile {profile_name}")
 
         except Exception as e:
             logger.error(f"Error loading profile recognizers for '{profile_name}': {str(e)}")

@@ -1,7 +1,10 @@
+import logging
 import re
-from typing import List, Optional
+from typing import List
 
 from presidio_analyzer import Pattern, PatternRecognizer, RecognizerResult
+
+logger = logging.getLogger(__name__)
 
 
 class RegexRecognizer(PatternRecognizer):
@@ -30,8 +33,9 @@ class RegexRecognizer(PatternRecognizer):
         )
         # Store entity type for use in analyze method
         self._entity_type = supported_entity
+        logger.debug(f"RegexRecognizer initialized with entity type: {supported_entity}")
 
-    def analyze(self, text, entities, nlp_artifacts=None):
+    def analyze(self, text: str, entities: List[str], nlp_artifacts=None) -> List[RecognizerResult]:
         """Analyze text using regex patterns.
 
         :param text: Text to analyze
@@ -59,8 +63,9 @@ class RegexRecognizer(PatternRecognizer):
                         },
                     )
                     results.append(result)
+                    logger.debug(f"Regex match: '{match.group()}' -> {self._entity_type}")
             except re.error as e:
-                print(f"Error in regex pattern '{pattern.name}': {str(e)}")
+                logger.error(f"Error in regex pattern '{pattern.name}': {str(e)}")
                 continue
 
         return results

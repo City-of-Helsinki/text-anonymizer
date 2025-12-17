@@ -7,9 +7,6 @@ from presidio_analyzer import Pattern
 
 logger = logging.getLogger(__name__)
 
-# Module-level cache for regex patterns
-_regex_patterns_cache: Optional[Dict[str, List[Pattern]]] = None
-
 
 def get_config_file_path(file_name: str) -> str:
     """Get the path to a configuration file in the config directory."""
@@ -92,27 +89,21 @@ def load_regex_patterns_from_json(file_path: str) -> Dict[str, List[Pattern]]:
 
 
 def get_regex_patterns(use_cache: bool = True) -> Dict[str, List[Pattern]]:
-    """Get all configured regex patterns with optional caching.
+    """Get all configured regex patterns.
 
-    :param use_cache: If True, use cached patterns. If False, reload from file.
+    Uses ConfigCache for centralized caching with mtime-based invalidation.
+
+    :param use_cache: Ignored (kept for backward compatibility)
     :return: Dictionary mapping entity types to lists of Pattern objects
     """
-    global _regex_patterns_cache
+    from text_anonymizer.config_cache import ConfigCache
 
-    if use_cache and _regex_patterns_cache is not None:
-        logger.debug("Using cached regex patterns")
-        return _regex_patterns_cache
-
-    config_file = get_config_file_path("regex_patterns.json")
-    patterns = load_regex_patterns_from_json(config_file)
-    _regex_patterns_cache = patterns
-
-    return patterns
+    return ConfigCache.instance().get_default_regex_patterns()
 
 
 def clear_regex_patterns_cache() -> None:
     """Clear the regex patterns cache to force reload on next access."""
-    global _regex_patterns_cache
-    _regex_patterns_cache = None
-    logger.info("Regex patterns cache cleared")
+    from text_anonymizer.config_cache import ConfigCache
 
+    ConfigCache.instance().invalidate_all()
+    logger.info("Regex patterns cache cleared")

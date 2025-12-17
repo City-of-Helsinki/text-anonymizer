@@ -10,13 +10,13 @@ Each profile can have its own set of configurations to customize anonymization
 behavior for different material types and use cases.
 """
 
-import os
-import json
 import logging
+import os
 from typing import List, Dict, Set
 
 from presidio_analyzer import Pattern
-from text_anonymizer.regex_config_provider import _convert_json_to_patterns
+
+from text_anonymizer.config_cache import ConfigCache
 
 logger = logging.getLogger(__name__)
 
@@ -76,24 +76,7 @@ class ProfileConfigProvider:
         :param profile_name: Name of the profile
         :return: Set of blocked words/phrases
         """
-        profile_dir = self.get_profile_config_dir(profile_name)
-        blocklist_file = os.path.join(profile_dir, f"blocklist.txt")
-
-        if not os.path.exists(blocklist_file):
-            logger.debug(f"Block list not found for profile: {profile_name}")
-            return set()
-
-        try:
-            with open(blocklist_file, 'r', encoding='utf-8') as file:
-                items = {line.strip().lower() for line in file if line.strip() and not line.startswith("#")}
-
-            logger.info(f"Loaded {len(items)} items from block list: {profile_name}")
-            return items
-        except IOError as e:
-            logger.error(f"Error loading block list: {str(e)}")
-            return set()
-
-
+        return ConfigCache.instance().get_profile_blocklist(profile_name)
 
     # ============================================================================
     # Grant List
@@ -108,23 +91,7 @@ class ProfileConfigProvider:
         :param profile_name: Name of the profile
         :return: Set of granted words/phrases
         """
-        profile_dir = self.get_profile_config_dir(profile_name)
-        grantlist_file = os.path.join(profile_dir, f"grantlist.txt")
-
-        if not os.path.exists(grantlist_file):
-            logger.debug(f"Grant list not found for profile: {profile_name}")
-            return set()
-
-        try:
-            with open(grantlist_file, 'r', encoding='utf-8') as file:
-                items = {line.strip().lower() for line in file if line.strip() and not line.startswith("#")}
-
-            logger.info(f"Loaded {len(items)} items from grant list: {profile_name}")
-            return items
-        except IOError as e:
-            logger.error(f"Error loading grant list: {str(e)}")
-            return set()
-
+        return ConfigCache.instance().get_profile_grantlist(profile_name)
 
     # ============================================================================
     # Regex Pattern
@@ -137,23 +104,4 @@ class ProfileConfigProvider:
         :param profile_name: Name of the profile
         :return: Dictionary mapping entity types to Pattern lists
         """
-        profile_dir = self.get_profile_config_dir(profile_name)
-        regex_file = os.path.join(profile_dir, "regex_patterns.json")
-
-        if not os.path.exists(regex_file):
-            logger.debug(f"Regex patterns not found for profile: {profile_name}")
-            return {}
-
-        try:
-            with open(regex_file, 'r', encoding='utf-8') as file:
-                config = json.load(file)
-
-            patterns = _convert_json_to_patterns(config)
-            logger.info(f"Loaded {len(patterns)} entity types from regex patterns for profile: {profile_name}")
-            return patterns
-        except (json.JSONDecodeError, IOError, KeyError, ValueError) as e:
-            logger.error(f"Error loading regex patterns for profile {profile_name}: {str(e)}")
-            return {}
-
-
-
+        return ConfigCache.instance().get_profile_regex_patterns(profile_name)

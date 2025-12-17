@@ -25,7 +25,7 @@ class GenericWordListRecognizer(PatternRecognizer):
         context: Optional[List[str]] = None,
         supported_language: str = "fi",
         supported_entity: str = "CUSTOM",
-        match_ratio=91,
+        match_ratio=95,
         deny_list: Optional[List[str]] = None,
     ):
 
@@ -92,8 +92,8 @@ class GenericWordListRecognizer(PatternRecognizer):
                     ratio = self.match_ratio
                     match = True
                 elif current_text.startswith(deny_item.lower()):
-                    ratio = self.match_ratio
-                    match = True
+                    ratio = fuzz.ratio(deny_item.lower(), current_text)
+                    match = ratio > self.match_ratio
                 else:
                     # Try fuzzy match on the full phrase
                     ratio = fuzz.ratio(deny_item.lower(), current_text)
@@ -115,7 +115,10 @@ class GenericWordListRecognizer(PatternRecognizer):
                     start_char_index = nlp_artifacts.tokens_indices[current_sequence[0].i]
                     end_char_index = nlp_artifacts.tokens_indices[current_sequence[-1].i] + len(current_sequence[-1].text)
 
-                    result = RecognizerResult(label, start_char_index, end_char_index, ratio, explanation)
+                    # Normalize score to 0.0-1.0 range (ratio is 0-100)
+                    normalized_score = ratio / 100.0
+
+                    result = RecognizerResult(label, start_char_index, end_char_index, normalized_score, explanation)
                     results.append(result)
 
                     # Move past the matched tokens

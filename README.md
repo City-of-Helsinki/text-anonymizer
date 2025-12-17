@@ -218,6 +218,17 @@ You can test this using file: examples/files/sample.csv
 You can use different configuration profiles to select different sets of recognizers and settings.
 Configuration profiles are located in config/<profile_name>/ folder. For default profile, folder is config/default/ and profile parameter is empty.
 
+### Profile specific grant and block lists
+
+Grant and block lists can be configured per profile.
+For profile "custom", configuration paths are:
+- Grant list: config/custom/grantlist.txt
+- Block list: config/custom/blocklist.txt
+
+Scoring is handled in the same way as in default profile:
+- Exact match: 1.0
+- Fuzzy match is calculated based on Levenshtein distance. For example: 'example12345' vs 'example321' has score of 0.73 that will be less than minimum 0.95.
+
 ### Custom regular expression recognizer
 
 RegexRecognizer is configurable general pattern recognizer that uses regex patterns defined in external configuration files. 
