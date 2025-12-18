@@ -27,6 +27,7 @@ class GenericWordListRecognizer(PatternRecognizer):
         supported_entity: str = "CUSTOM",
         match_ratio=95,
         deny_list: Optional[List[str]] = None,
+        score_override: Optional[float] = None,
     ):
 
         context = context if context else self.CONTEXT
@@ -38,7 +39,13 @@ class GenericWordListRecognizer(PatternRecognizer):
             if len(w) < self.minimum_word_length:
                 self.minimum_word_length = len(w)
 
+        # match_ratio is the score for exact matches (0-100, will be normalized to 0.0-1.0)
+        # fuzzy_threshold is the minimum ratio for fuzzy/startswith matches (0-100)
         self.match_ratio = match_ratio
+        self.fuzzy_threshold = 85  # Fixed threshold for fuzzy matching
+        # score_override: if set, will override all calculated scores with this fixed value
+        self.score_override = score_override
+
         super().__init__(
             supported_entity=supported_entity,
             patterns=None,
@@ -89,15 +96,17 @@ class GenericWordListRecognizer(PatternRecognizer):
                 match = False
 
                 if current_text == deny_item.lower():
+                    # Exact match - use match_ratio as the score
                     ratio = self.match_ratio
                     match = True
                 elif current_text.startswith(deny_item.lower()):
+                    # Prefix match - use fuzzy ratio but with fixed threshold
                     ratio = fuzz.ratio(deny_item.lower(), current_text)
-                    match = ratio > self.match_ratio
+                    match = ratio > self.fuzzy_threshold
                 else:
-                    # Try fuzzy match on the full phrase
+                    # Fuzzy match - use fuzzy ratio with fixed threshold
                     ratio = fuzz.ratio(deny_item.lower(), current_text)
-                    match = ratio > self.match_ratio
+                    match = ratio > self.fuzzy_threshold
 
                 if match:
                     # Build result and explanation
@@ -115,10 +124,13 @@ class GenericWordListRecognizer(PatternRecognizer):
                     start_char_index = nlp_artifacts.tokens_indices[current_sequence[0].i]
                     end_char_index = nlp_artifacts.tokens_indices[current_sequence[-1].i] + len(current_sequence[-1].text)
 
-                    # Normalize score to 0.0-1.0 range (ratio is 0-100)
-                    normalized_score = ratio / 100.0
+                    # Use score_override if provided, otherwise normalize calculated score (ratio is 0-100)
+                    if self.score_override is not None:
+                        final_score = self.score_override
+                    else:
+                        final_score = ratio / 100.0
 
-                    result = RecognizerResult(label, start_char_index, end_char_index, normalized_score, explanation)
+                    result = RecognizerResult(label, start_char_index, end_char_index, final_score, explanation)
                     results.append(result)
 
                     # Move past the matched tokens

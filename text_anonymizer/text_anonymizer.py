@@ -29,6 +29,38 @@ logger = logging.getLogger(__name__)
 
 # Suppress excessive logging from external libraries
 logging.getLogger('presidio-anonymizer').setLevel(logging.ERROR)
+
+
+def resolve_conflicts_by_score(results: List[RecognizerResult]) -> List[RecognizerResult]:
+    """
+    Resolve overlapping entity conflicts by preferring higher scores.
+
+    When two entities overlap, the one with higher score wins.
+    If scores are equal, the longer span wins.
+
+    :param results: List of RecognizerResult objects
+    :return: List of non-overlapping RecognizerResult objects
+    """
+    if not results:
+        return []
+
+    # Sort by score (descending), then by span length (descending)
+    sorted_results = sorted(results, key=lambda x: (-x.score, -(x.end - x.start)))
+
+    kept_results = []
+    for result in sorted_results:
+        # Check if this result overlaps with any already kept result
+        overlaps = False
+        for kept in kept_results:
+            # Check for overlap
+            if not (result.end <= kept.start or result.start >= kept.end):
+                overlaps = True
+                break
+
+        if not overlaps:
+            kept_results.append(result)
+
+    return kept_results
 logging.getLogger("presidio-analyzer").setLevel(logging.ERROR)
 logging.getLogger('spacy').setLevel(logging.ERROR)
 
@@ -95,6 +127,10 @@ class TextAnonymizer:
             self.mask_mappings = anonymizer_settings.mask_mappings_debug
         else:
             self.mask_mappings = anonymizer_settings.mask_mapppings
+
+        # Reset ConfigCache to ensure fresh config is loaded (respects CONFIG_DIR changes)
+        from text_anonymizer.config_cache import ConfigCache
+        ConfigCache.reset_instance()
 
         # Ensure that only supported languages are given
         languages_cleaned = []
@@ -214,7 +250,8 @@ class TextAnonymizer:
                 block_list_recognizer = GenericWordListRecognizer(
                     supported_entity="OTHER",
                     supported_language='fi',
-                    deny_list=list(blocklist)
+                    deny_list=list(blocklist),
+                    score_override=None  # No override for blocklist
                 )
                 registry.add_recognizer(block_list_recognizer)
                 logger.debug(f"Added {len(blocklist)} items to blocklist from profile {profile_name}")
@@ -222,10 +259,13 @@ class TextAnonymizer:
             # Load profile grantlist
             grantlist = profile_manager.load_profile_grantlist(profile_name)
             if grantlist:
+                # Grantlist uses score_override=1.0 to ensure it always wins against other detections
+                # This ensures protected names are never anonymized
                 grant_list_recognizer = GenericWordListRecognizer(
                     supported_entity="GRANTLISTED",
                     supported_language='fi',
-                    deny_list=list(grantlist)
+                    deny_list=list(grantlist),
+                    score_override=1.0  # Always win with highest score
                 )
                 registry.add_recognizer(grant_list_recognizer)
                 logger.debug(f"Added {len(grantlist)} items to grantlist from profile {profile_name}")
@@ -269,8 +309,8 @@ class TextAnonymizer:
             a_results = analyzer.analyze(text=text, language=lang)
             analyzer_results.extend(a_results)
 
-        # Remove duplicates
-        analyzer_results = self.anonymizer_engine._remove_conflicts_and_get_text_manipulation_data(analyzer_results, ConflictResolutionStrategy.MERGE_SIMILAR_OR_CONTAINED)
+        # Remove duplicates - use custom conflict resolution that prefers higher scores
+        analyzer_results = resolve_conflicts_by_score(analyzer_results)
         # Remove unwanted recognizer results
         analyzer_results = self.filter_analyzer_results(analyzer_results, user_recognizers)
 
@@ -411,15 +451,18 @@ class TextAnonymizer:
             if len(deny_list) > 0:
                 block_list_recognizer = GenericWordListRecognizer(supported_entity="OTHER",
                                                                    supported_language='fi',
-                                                                   deny_list=deny_list)
+                                                                   deny_list=deny_list,
+                                                                   score_override=None)  # No override
                 registry.add_recognizer(block_list_recognizer)
 
         if RECOGNIZER_GRANTLIST in self.recognizer_configuration:
             deny_list = get_grant_list()
             if len(deny_list) > 0:
+                # Grantlist uses score_override=1.0 to ensure it always wins against other detections
                 grant_list_recognizer = GenericWordListRecognizer(supported_entity="GRANTLISTED",
                                                                    supported_language='fi',
-                                                                   deny_list=deny_list)
+                                                                   deny_list=deny_list,
+                                                                   score_override=1.0)  # Always win
                 registry.add_recognizer(grant_list_recognizer)
 
         if RECOGNIZER_PROPERTY in self.recognizer_configuration:

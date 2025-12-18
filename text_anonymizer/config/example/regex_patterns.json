@@ -1,52 +1,52 @@
 {
   "EXAMPLE": [
     {
-      "name": "exact_match",
-      "pattern": "\\bEXAMPLE\\b",
-      "score": 0.99,
-      "description": "Exact word match. \\b = word boundary (prevents matching 'EXAMPLES' or 'MYEXAMPLE')"
-    },
-    {
-      "name": "case_insensitive_variations",
-      "pattern": "\\b[Ee][Xx][Aa][Mm][Pp][Ll][Ee]\\b",
-      "score": 0.98,
-      "description": "Matches EXAMPLE, example, Example, ExAmPlE etc. Each [Xx] matches either case."
-    },
-    {
-      "name": "word_with_numbers",
-      "pattern": "\\bEXAMPLE[0-9]+\\b",
-      "score": 0.97,
-      "description": "EXAMPLE followed by one or more digits. Matches EXAMPLE1, EXAMPLE123, EXAMPLE999999"
-    },
-    {
-      "name": "word_with_optional_numbers",
-      "pattern": "\\bEXAMPLE[0-9]*\\b",
-      "score": 0.96,
-      "description": "EXAMPLE followed by zero or more digits. Matches EXAMPLE, EXAMPLE1, EXAMPLE123"
-    },
-    {
-      "name": "word_with_fixed_digits",
-      "pattern": "\\bEXAMPLE[0-9]{3}\\b",
-      "score": 0.95,
-      "description": "EXAMPLE followed by exactly 3 digits. Matches EXAMPLE123 but NOT EXAMPLE12 or EXAMPLE1234"
-    },
-    {
-      "name": "word_with_digit_range",
-      "pattern": "\\bEXAMPLE[0-9]{2,4}\\b",
-      "score": 0.94,
-      "description": "EXAMPLE followed by 2-4 digits. Matches EXAMPLE12, EXAMPLE123, EXAMPLE1234"
-    },
-    {
       "name": "prefix_variations",
       "pattern": "\\b(?:TEST|PROD|DEV)_EXAMPLE[0-9]+\\b",
-      "score": 0.93,
+      "score": 1.1,
       "description": "Non-capturing group (?:...) for prefix options. Matches TEST_EXAMPLE1, PROD_EXAMPLE99"
     },
     {
       "name": "alphanumeric_suffix",
       "pattern": "\\bEXAMPLE[A-Za-z0-9]{3,6}\\b",
-      "score": 0.92,
+      "score": 1.09,
       "description": "EXAMPLE followed by 3-6 alphanumeric chars. Matches EXAMPLEabc, EXAMPLE1a2b"
+    },
+    {
+      "name": "word_with_numbers",
+      "pattern": "\\bEXAMPLE[0-9]+\\b",
+      "score": 1.08,
+      "description": "EXAMPLE followed by one or more digits. Matches EXAMPLE1, EXAMPLE123, EXAMPLE999999"
+    },
+    {
+      "name": "word_with_fixed_digits",
+      "pattern": "\\bEXAMPLE[0-9]{3}\\b",
+      "score": 1.07,
+      "description": "EXAMPLE followed by exactly 3 digits. Matches EXAMPLE123 but NOT EXAMPLE12 or EXAMPLE1234"
+    },
+    {
+      "name": "word_with_digit_range",
+      "pattern": "\\bEXAMPLE[0-9]{2,4}\\b",
+      "score": 1.06,
+      "description": "EXAMPLE followed by 2-4 digits. Matches EXAMPLE12, EXAMPLE123, EXAMPLE1234"
+    },
+    {
+      "name": "case_insensitive_variations",
+      "pattern": "\\b[Ee][Xx][Aa][Mm][Pp][Ll][Ee]\\b",
+      "score": 1.05,
+      "description": "Matches EXAMPLE, example, Example, ExAmPlE etc. Each [Xx] matches either case."
+    },
+    {
+      "name": "exact_match",
+      "pattern": "\\bEXAMPLE\\b",
+      "score": 1.04,
+      "description": "Exact word match. \\b = word boundary (prevents matching 'EXAMPLES' or 'MYEXAMPLE')"
+    },
+    {
+      "name": "word_with_optional_numbers",
+      "pattern": "\\bEXAMPLE[0-9]*\\b",
+      "score": 1.03,
+      "description": "EXAMPLE followed by zero or more digits. Matches EXAMPLE, EXAMPLE1, EXAMPLE123"
     }
   ]
 }
