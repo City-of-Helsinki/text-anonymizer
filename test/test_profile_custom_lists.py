@@ -41,6 +41,7 @@ class TestProfileBlocklist(unittest.TestCase):
 
     def setUp(self):
         """Initialize test fixtures."""
+
         self.anonymizer = TextAnonymizer(debug_mode=False)
         self.profile_provider = ProfileConfigProvider()
 
@@ -51,12 +52,12 @@ class TestProfileBlocklist(unittest.TestCase):
         self.assertIsNotNone(blocklist)
         self.assertIsInstance(blocklist, set)
         self.assertGreater(len(blocklist), 0)
-        self.assertIn("example123", blocklist)
+        self.assertIn("blockword123", blocklist)
         logger.info(f"Blocklist loaded with {len(blocklist)} items: {blocklist}")
 
     def test_blocklist_items_are_anonymized(self):
         """Test that blocklisted words are detected and anonymized."""
-        text = "The code example123 is in our system."
+        text = "The code blockword123 is in our system."
         result = self.anonymizer.anonymize(text, profile="example")
 
         # Check that anonymization happened
@@ -65,16 +66,16 @@ class TestProfileBlocklist(unittest.TestCase):
 
         # Check that the blocklisted word was detected
         self.assertIn(self.label, result.details)
-        self.assertIn("example123", result.details[self.label])
+        self.assertIn("blockword123", result.details[self.label])
         logger.info(f"Blocklisted word detected and anonymized: {result.anonymized_text}")
 
     def test_blocklist_case_insensitive(self):
         """Test that blocklist matching is case-insensitive."""
         test_cases = [
-            "example123",
-            "EXAMPLE123",
-            "Example123",
-            "eXaMpLe123",
+            "blockword123",
+            "BLOCKWORD123",
+            "Blockword123",
+            "bLoCkWoRd123",
         ]
 
         for variant in test_cases:
@@ -87,7 +88,7 @@ class TestProfileBlocklist(unittest.TestCase):
 
     def test_multiple_blocklist_items(self):
         """Test detecting multiple blocklisted items in one text."""
-        text = "Items example123 and example321 are both blocked."
+        text = "Items blockword123 and blockword456 are both blocked."
         result = self.anonymizer.anonymize(text, profile="example")
 
         self.assertIn(self.label, result.details)
@@ -99,10 +100,10 @@ class TestProfileBlocklist(unittest.TestCase):
     def test_blocklist_in_different_contexts(self):
         """Test blocklist detection in various text contexts."""
         test_cases = [
-            "Example123 start here",
-            "In the middle example123 of text",
-            "At the end example123",
-            "Multiple example123 items example123 here",
+            "Blockword123 start here",
+            "In the middle blockword123 of text",
+            "At the end blockword123",
+            "Multiple blockword123 items blockword123 here",
         ]
 
         for text in test_cases:
@@ -125,6 +126,7 @@ class TestProfileGrantlist(unittest.TestCase):
 
     def setUp(self):
         """Initialize test fixtures."""
+
         self.anonymizer = TextAnonymizer(debug_mode=False)
         self.profile_provider = ProfileConfigProvider()
 
@@ -182,8 +184,11 @@ class TestProfileGrantlist(unittest.TestCase):
 class TestProfileCustomListsIntegration(unittest.TestCase):
     """Integration tests for blocklist and grantlist with other recognizers."""
 
+    label = "MUU_TUNNISTE"
+
     def setUp(self):
         """Initialize test fixtures."""
+
         self.anonymizer = TextAnonymizer(debug_mode=False)
         self.profile_provider = ProfileConfigProvider()
         self.temp_profiles_dir = None
@@ -197,7 +202,7 @@ class TestProfileCustomListsIntegration(unittest.TestCase):
     def test_blocklist_and_regex_patterns_together(self):
         """Test that blocklist works alongside regex patterns in a profile."""
         # The example profile has both regex patterns (EXAMPLE entity) and blocklist
-        text = "Code ABCxyz123 and item example123 are both here."
+        text = "Code EXAMPLE123 and item blockword123 are both here."
         result = self.anonymizer.anonymize(text, profile="example")
 
         # Should detect both regex pattern and blocklist
@@ -208,7 +213,7 @@ class TestProfileCustomListsIntegration(unittest.TestCase):
 
     def test_profile_blocklist_with_default_anonymizer(self):
         """Test that blocklist doesn't affect default anonymizer."""
-        text = "The code example123 is in our system."
+        text = "The code blockword123 is in our system."
 
         # Anonymize without profile
         result_no_profile = self.anonymizer.anonymize(text)
@@ -229,7 +234,7 @@ class TestProfileCustomListsIntegration(unittest.TestCase):
 
     def test_multiple_blocklist_items_with_different_frequencies(self):
         """Test counting multiple blocklist items in text."""
-        text = "We have example123 once, but example123 appears twice total."
+        text = "We have blockword123 once, but blockword123 appears twice total."
         result = self.anonymizer.anonymize(text, profile="example")
 
         if self.label in result.statistics:
@@ -301,6 +306,10 @@ class TestProfileCustomListsFileHandling(unittest.TestCase):
                 f.write("# Another comment\n")
                 f.write("item2\n")
 
+            # Reset ConfigCache singleton AFTER files are created to pick up new CONFIG_DIR
+            from text_anonymizer.config_cache import ConfigCache
+            ConfigCache.reset_instance()
+
             provider = ProfileConfigProvider()
             blocklist = provider.load_profile_blocklist("test_profile")
 
@@ -329,6 +338,10 @@ class TestProfileCustomListsFileHandling(unittest.TestCase):
                 f.write("# Another comment\n")
                 f.write("grant2\n")
 
+            # Reset ConfigCache singleton AFTER files are created to pick up new CONFIG_DIR
+            from text_anonymizer.config_cache import ConfigCache
+            ConfigCache.reset_instance()
+
             provider = ProfileConfigProvider()
             grantlist = provider.load_profile_grantlist("test_profile")
 
@@ -356,6 +369,10 @@ class TestProfileCustomListsFileHandling(unittest.TestCase):
                 f.write("  \n")
                 f.write("item2\n")
 
+            # Reset ConfigCache singleton AFTER files are created to pick up new CONFIG_DIR
+            from text_anonymizer.config_cache import ConfigCache
+            ConfigCache.reset_instance()
+
             provider = ProfileConfigProvider()
             blocklist = provider.load_profile_blocklist("test_profile")
 
@@ -377,6 +394,10 @@ class TestProfileCustomListsFileHandling(unittest.TestCase):
             os.makedirs(profile_dir, exist_ok=True)
             # Don't create blocklist.txt
 
+            # Reset ConfigCache singleton AFTER directory is created to pick up new CONFIG_DIR
+            from text_anonymizer.config_cache import ConfigCache
+            ConfigCache.reset_instance()
+
             provider = ProfileConfigProvider()
             blocklist = provider.load_profile_blocklist("empty_profile")
 
@@ -389,77 +410,7 @@ class TestProfileCustomListsFileHandling(unittest.TestCase):
                 del os.environ["CONFIG_DIR"]
 
 
-def run_simple_tests():
-    """Run simple manual tests without unittest framework."""
-    print("\n" + "="*70)
-    print("SIMPLE PROFILE CUSTOM LISTS TESTS")
-    print("="*70)
-
-    anonymizer = TextAnonymizer(debug_mode=False)
-    provider = ProfileConfigProvider()
-
-    # Test 1: Load blocklist
-    print("\n[TEST 1] Loading blocklist from 'example' profile")
-    blocklist = provider.load_profile_blocklist("example")
-    print(f"  Blocklist items: {blocklist}")
-    assert len(blocklist) > 0, "Blocklist should not be empty"
-    assert "example123" in blocklist, "Should contain 'example123'"
-    print("  ✓ PASS")
-
-    # Test 2: Load grantlist
-    print("\n[TEST 2] Loading grantlist from 'example' profile")
-    grantlist = provider.load_profile_grantlist("example")
-    print(f"  Grantlist items: {grantlist}")
-    assert len(grantlist) > 0, "Grantlist should not be empty"
-    assert "example321" in grantlist, "Should contain 'example321'"
-    print("  ✓ PASS")
-
-    # Test 3: Blocklist detection
-    print("\n[TEST 3] Detecting blocklisted items in text")
-    text = "The item example123 is blocked."
-    result = anonymizer.anonymize(text, profile="example")
-    print(f"  Original: {text}")
-    print(f"  Anonymized: {result.anonymized_text}")
-    print(f"  Details: {result.details}")
-    assert self.label in result.details, "Should detect blocklist items"
-    print("  ✓ PASS")
-
-    # Test 4: Profile-specific vs default
-    print("\n[TEST 4] Comparing default anonymizer vs profile anonymizer")
-    text = "Item example123 here"
-    result_default = anonymizer.anonymize(text)
-    result_profile = anonymizer.anonymize(text, profile="example")
-
-    has_other_default = self.label in result_default.details
-    has_other_profile = self.label in result_profile.details
-
-    print(f"  Default has OTHER: {has_other_default}")
-    print(f"  Profile has OTHER: {has_other_profile}")
-    assert not has_other_default, "Default should not have blocklist"
-    assert has_other_profile, "Profile should have blocklist"
-    print("  ✓ PASS")
-
-    # Test 5: Multiple blocklist items
-    print("\n[TEST 5] Detecting multiple blocklist items")
-    text = "Items example123 and example123 appear here."
-    result = anonymizer.anonymize(text, profile="example")
-    count = result.statistics.get(self.label, 0)
-    print(f"  Text: {text}")
-    print(f"  Detected count: {count}")
-    assert count > 0, "Should detect blocklist items"
-    print("  ✓ PASS")
-
-    print("\n" + "="*70)
-    print("ALL SIMPLE TESTS PASSED!")
-    print("="*70)
-
-
 if __name__ == "__main__":
-    # Check if running with unittest or simple tests
-    if "--simple" in sys.argv:
-        sys.argv.remove("--simple")
-        run_simple_tests()
-    else:
-        # Run unittest tests
-        unittest.main(verbosity=2)
+    # Run unittest tests
+    unittest.main(verbosity=2)
 

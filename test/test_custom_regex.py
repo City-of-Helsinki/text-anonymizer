@@ -1,32 +1,32 @@
 """
-Test suite for verifying EXAMPLE entity detection using custom regex patterns.
+Testit EXAMPLE-tunnisteiden havaitsemiseen mukautetuilla regex-kuvioilla.
 
-This test validates that all EXAMPLE regex patterns in the example profile configuration
-correctly identify various patterns involving the word EXAMPLE with numbers and variations.
+Tämä testi varmistaa, että kaikki EXAMPLE regex-kuviot example-profiilissa
+tunnistavat oikein erilaisia EXAMPLE-sanan ja numeroiden yhdistelmiä.
 
-REGEX PATTERN REFERENCE:
-========================
-Understanding backslashes in JSON regex patterns:
-- In JSON, backslash must be escaped: \\ becomes a single \ in the actual regex
-- \\b in JSON = \b in regex = word boundary
-- \\d in JSON = \d in regex = digit [0-9]
+REGEX-KUVIOIDEN OHJE:
+=====================
+Kenoviivat JSON regex-kuvioissa:
+- JSONissa kenoviiva pitää escapoida: \\ tulee yhdeksi \ varsinaisessa regexissä
+- \\b JSONissa = \b regexissä = sananraja
+- \\d JSONissa = \d regexissä = numero [0-9]
 
-Pattern syntax quick reference:
-- \\b        Word boundary (prevents partial matches like 'MYEXAMPLE' or 'EXAMPLES')
-- [0-9]     Match any single digit
-- [A-Za-z]  Match any single letter (upper or lower case)
-- +         Match one or more of preceding element
-- *         Match zero or more of preceding element
-- {3}       Match exactly 3 of preceding element
-- {2,4}     Match 2 to 4 of preceding element
-- (?:...)   Non-capturing group for alternatives
-- |         OR operator (used inside groups)
+Kuviosyntaksin pikaopas:
+- \\b        Sananraja (estää osittaiset osumat kuten 'MYEXAMPLE' tai 'EXAMPLES')
+- [0-9]     Vastaa mitä tahansa yksittäistä numeroa
+- [A-Za-z]  Vastaa mitä tahansa yksittäistä kirjainta (iso tai pieni)
+- +         Vastaa yhtä tai useampaa edeltävää elementtiä
+- *         Vastaa nollaa tai useampaa edeltävää elementtiä
+- {3}       Vastaa täsmälleen 3 edeltävää elementtiä
+- {2,4}     Vastaa 2-4 edeltävää elementtiä
+- (?:...)   Ei-kaappaava ryhmä vaihtoehdoille
+- |         TAI-operaattori (käytetään ryhmien sisällä)
 
-Example patterns explained:
-- \\bEXAMPLE\\b           Matches exact word "EXAMPLE"
-- \\bEXAMPLE[0-9]+\\b     Matches "EXAMPLE" followed by 1+ digits: EXAMPLE1, EXAMPLE987
-- \\bEXAMPLE[0-9]*\\b     Matches "EXAMPLE" followed by 0+ digits: EXAMPLE, EXAMPLE1
-- \\bEXAMPLE[0-9]{3}\\b   Matches "EXAMPLE" followed by exactly 3 digits: EXAMPLE987
+Esimerkkikuviot selitettynä:
+- \\bEXAMPLE\\b           Vastaa täsmälleen sanaa "EXAMPLE"
+- \\bEXAMPLE[0-9]+\\b     Vastaa "EXAMPLE" ja 1+ numeroa: EXAMPLE1, EXAMPLE987
+- \\bEXAMPLE[0-9]*\\b     Vastaa "EXAMPLE" ja 0+ numeroa: EXAMPLE, EXAMPLE1
+- \\bEXAMPLE[0-9]{3}\\b   Vastaa "EXAMPLE" ja täsmälleen 3 numeroa: EXAMPLE987
 """
 
 import unittest
@@ -34,280 +34,277 @@ from text_anonymizer import TextAnonymizer
 
 
 class TestCustomRegex(unittest.TestCase):
-    """Test cases for verifying EXAMPLE entity detection in example profile."""
+    """Testitapaukset EXAMPLE-tunnisteiden havaitsemiseen example-profiilissa."""
 
     def setUp(self):
-        """Initialize the text anonymizer and set test parameters."""
+        """Alusta tekstin anonymisoija ja testiparametrit."""
         self.label = "EXAMPLE"
         self.profile_name = "example"
         self.anonymizer = TextAnonymizer(debug_mode=False)
 
     # =========================================================================
-    # Pattern: exact_match - \\bEXAMPLE\\b
-    # Matches only the exact word "EXAMPLE" with word boundaries
+    # Kuvio: exact_match - \\bEXAMPLE\\b
+    # Vastaa vain täsmällistä sanaa "EXAMPLE" sananrajoilla
     # =========================================================================
     def test_exact_match_standalone(self):
-        """Test detection of exact word EXAMPLE."""
+        """Testaa täsmällisen EXAMPLE-sanan havaitseminen."""
         text = "EXAMPLE"
         result = self.anonymizer.anonymize(text, profile=self.profile_name)
         self.assertIn(self.label, result.details)
         self.assertIn(text, result.details[self.label])
 
     def test_exact_match_in_sentence(self):
-        """Test detection of EXAMPLE in a sentence."""
-        text = "This is an EXAMPLE of text."
+        """Testaa EXAMPLE-sanan havaitseminen lauseessa."""
+        text = "Tämä on EXAMPLE esimerkki tekstistä."
         result = self.anonymizer.anonymize(text, profile=self.profile_name)
         self.assertIn(self.label, result.details)
         self.assertIn("EXAMPLE", result.details[self.label])
 
     def test_exact_match_not_partial_prefix(self):
-        """Test that MYEXAMPLE does not match (word boundary prevents prefix match)."""
+        """Testaa ettei MYEXAMPLE vastaa (sananraja estää etuliitteen)."""
         text = "MYEXAMPLE"
         result = self.anonymizer.anonymize(text, profile=self.profile_name)
-        # Should NOT detect EXAMPLE inside MYEXAMPLE due to word boundary
+        # Ei pitäisi havaita EXAMPLE-sanaa MYEXAMPLE-sanan sisältä sananrajan takia
         if self.label in result.details:
             self.assertNotIn("EXAMPLE", result.details[self.label])
 
     def test_exact_match_not_partial_suffix(self):
-        """Test that EXAMPLES does not match exact pattern (word boundary prevents suffix match)."""
+        """Testaa ettei EXAMPLES vastaa täsmällistä kuviota."""
         text = "EXAMPLES"
         result = self.anonymizer.anonymize(text, profile=self.profile_name)
-        # The exact_match pattern should not detect EXAMPLES
-        # But word_with_optional_numbers pattern may match, so we check for exact "EXAMPLES"
         if self.label in result.details:
             self.assertNotIn("EXAMPLES", result.details[self.label])
 
     # =========================================================================
-    # Pattern: case_insensitive_variations - \\b[Ee][Xx][Aa][Mm][Pp][Ll][Ee]\\b
-    # Matches EXAMPLE in any case combination
+    # Kuvio: case_insensitive_variations - \\b[Ee][Xx][Aa][Mm][Pp][Ll][Ee]\\b
+    # Vastaa EXAMPLE-sanaa missä tahansa kirjainkoossa
     # =========================================================================
     def test_case_insensitive_lowercase(self):
-        """Test detection of lowercase 'example'."""
+        """Testaa pienillä kirjaimilla kirjoitetun 'example' havaitseminen."""
         text = "example"
         result = self.anonymizer.anonymize(text, profile=self.profile_name)
         self.assertIn(self.label, result.details)
         self.assertIn(text, result.details[self.label])
 
     def test_case_insensitive_mixed_case(self):
-        """Test detection of mixed case 'ExAmPlE'."""
+        """Testaa sekakirjainkoon 'ExAmPlE' havaitseminen."""
         text = "ExAmPlE"
         result = self.anonymizer.anonymize(text, profile=self.profile_name)
         self.assertIn(self.label, result.details)
         self.assertIn(text, result.details[self.label])
 
     def test_case_insensitive_title_case(self):
-        """Test detection of title case 'Example'."""
+        """Testaa otsikkokirjainkoon 'Example' havaitseminen."""
         text = "Example"
         result = self.anonymizer.anonymize(text, profile=self.profile_name)
         self.assertIn(self.label, result.details)
         self.assertIn(text, result.details[self.label])
 
     # =========================================================================
-    # Pattern: word_with_numbers - \\bEXAMPLE[0-9]+\\b
-    # Matches EXAMPLE followed by one or more digits
+    # Kuvio: word_with_numbers - \\bEXAMPLE[0-9]+\\b
+    # Vastaa EXAMPLE ja yksi tai useampi numero perässä
     # =========================================================================
     def test_word_with_numbers_single_digit(self):
-        """Test detection of EXAMPLE followed by single digit."""
+        """Testaa EXAMPLE ja yksi numero perässä."""
         text = "EXAMPLE1"
         result = self.anonymizer.anonymize(text, profile=self.profile_name)
         self.assertIn(self.label, result.details)
         self.assertIn(text, result.details[self.label])
 
     def test_word_with_numbers_multiple_digits(self):
-        """Test detection of EXAMPLE followed by multiple digits."""
+        """Testaa EXAMPLE ja useita numeroita perässä."""
         text = "EXAMPLE987"
         result = self.anonymizer.anonymize(text, profile=self.profile_name)
         self.assertIn(self.label, result.details)
         self.assertIn(text, result.details[self.label])
 
     def test_word_with_numbers_many_digits(self):
-        """Test detection of EXAMPLE followed by many digits."""
+        """Testaa EXAMPLE ja monta numeroa perässä."""
         text = "EXAMPLE999999"
         result = self.anonymizer.anonymize(text, profile=self.profile_name)
         self.assertIn(self.label, result.details)
         self.assertIn(text, result.details[self.label])
 
     def test_word_with_numbers_in_sentence(self):
-        """Test detection of EXAMPLE with numbers in context."""
-        text = "Please check EXAMPLE456 for details."
+        """Testaa EXAMPLE numeroilla lauseyhteydessä."""
+        text = "Tarkista koodi EXAMPLE456 järjestelmästä."
         result = self.anonymizer.anonymize(text, profile=self.profile_name)
         self.assertIn(self.label, result.details)
         self.assertIn("EXAMPLE456", result.details[self.label])
 
     # =========================================================================
-    # Pattern: word_with_fixed_digits - \\bEXAMPLE[0-9]{3}\\b
-    # Matches EXAMPLE followed by exactly 3 digits
+    # Kuvio: word_with_fixed_digits - \\bEXAMPLE[0-9]{3}\\b
+    # Vastaa EXAMPLE ja täsmälleen 3 numeroa
     # =========================================================================
     def test_fixed_digits_exact_three(self):
-        """Test detection of EXAMPLE followed by exactly 3 digits."""
+        """Testaa EXAMPLE ja täsmälleen 3 numeroa."""
         text = "EXAMPLE987"
         result = self.anonymizer.anonymize(text, profile=self.profile_name)
         self.assertIn(self.label, result.details)
         self.assertIn(text, result.details[self.label])
 
     def test_fixed_digits_too_few_not_matched(self):
-        """Test that EXAMPLE56 (2 digits) is not matched by fixed_digits pattern."""
+        """Testaa ettei EXAMPLE56 (2 numeroa) vastaa fixed_digits-kuviota."""
         text = "EXAMPLE56"
         result = self.anonymizer.anonymize(text, profile=self.profile_name)
-        # word_with_digit_range pattern will match this (2-4 digits)
-        # but fixed_digits pattern requires exactly 3
+        # word_with_digit_range-kuvio vastaa tätä (2-4 numeroa)
         self.assertIn(self.label, result.details)
         self.assertIn(text, result.details[self.label])
 
     def test_fixed_digits_too_many_not_matched_by_fixed(self):
-        """Test that EXAMPLE9874 (4 digits) is matched by digit_range but not fixed_digits."""
+        """Testaa että EXAMPLE9874 (4 numeroa) vastaa digit_range-kuviota."""
         text = "EXAMPLE9874"
         result = self.anonymizer.anonymize(text, profile=self.profile_name)
-        # word_with_digit_range pattern will match (2-4 digits)
         self.assertIn(self.label, result.details)
         self.assertIn(text, result.details[self.label])
 
     # =========================================================================
-    # Pattern: word_with_digit_range - \\bEXAMPLE[0-9]{2,4}\\b
-    # Matches EXAMPLE followed by 2 to 4 digits
+    # Kuvio: word_with_digit_range - \\bEXAMPLE[0-9]{2,4}\\b
+    # Vastaa EXAMPLE ja 2-4 numeroa
     # =========================================================================
     def test_digit_range_two_digits(self):
-        """Test detection of EXAMPLE followed by 2 digits."""
+        """Testaa EXAMPLE ja 2 numeroa."""
         text = "EXAMPLE56"
         result = self.anonymizer.anonymize(text, profile=self.profile_name)
         self.assertIn(self.label, result.details)
         self.assertIn(text, result.details[self.label])
 
     def test_digit_range_four_digits(self):
-        """Test detection of EXAMPLE followed by 4 digits."""
+        """Testaa EXAMPLE ja 4 numeroa."""
         text = "EXAMPLE9874"
         result = self.anonymizer.anonymize(text, profile=self.profile_name)
         self.assertIn(self.label, result.details)
         self.assertIn(text, result.details[self.label])
 
     def test_digit_range_one_digit_no_match(self):
-        """Test that EXAMPLE1 (1 digit) is not matched by digit_range pattern."""
+        """Testaa ettei EXAMPLE1 (1 numero) vastaa digit_range-kuviota."""
         text = "EXAMPLE1"
         result = self.anonymizer.anonymize(text, profile=self.profile_name)
-        # word_with_numbers pattern will match this (1+ digits)
+        # word_with_numbers-kuvio vastaa tätä (1+ numeroa)
         self.assertIn(self.label, result.details)
         self.assertIn(text, result.details[self.label])
 
     def test_digit_range_five_digits_no_match(self):
-        """Test that EXAMPLE98745 (5 digits) is not matched by digit_range pattern."""
+        """Testaa ettei EXAMPLE98745 (5 numeroa) vastaa digit_range-kuviota."""
         text = "EXAMPLE98745"
         result = self.anonymizer.anonymize(text, profile=self.profile_name)
-        # word_with_numbers pattern will match (1+ digits)
+        # word_with_numbers-kuvio vastaa (1+ numeroa)
         self.assertIn(self.label, result.details)
         self.assertIn(text, result.details[self.label])
 
     # =========================================================================
-    # Pattern: prefix_variations - \\b(?:TEST|PROD|DEV)_EXAMPLE[0-9]+\\b
-    # Matches TEST_EXAMPLE, PROD_EXAMPLE, DEV_EXAMPLE followed by digits
+    # Kuvio: prefix_variations - \\b(?:TEST|PROD|DEV)_EXAMPLE[0-9]+\\b
+    # Vastaa TEST_EXAMPLE, PROD_EXAMPLE, DEV_EXAMPLE ja numeroita
     # =========================================================================
     def test_prefix_test_example(self):
-        """Test detection of TEST_EXAMPLE with digits."""
+        """Testaa TEST_EXAMPLE numeroilla."""
         text = "TEST_EXAMPLE1"
         result = self.anonymizer.anonymize(text, profile=self.profile_name)
         self.assertIn(self.label, result.details)
         self.assertIn(text, result.details[self.label])
 
     def test_prefix_prod_example(self):
-        """Test detection of PROD_EXAMPLE with digits."""
+        """Testaa PROD_EXAMPLE numeroilla."""
         text = "PROD_EXAMPLE99"
         result = self.anonymizer.anonymize(text, profile=self.profile_name)
         self.assertIn(self.label, result.details)
         self.assertIn(text, result.details[self.label])
 
     def test_prefix_dev_example(self):
-        """Test detection of DEV_EXAMPLE with digits."""
+        """Testaa DEV_EXAMPLE numeroilla."""
         text = "DEV_EXAMPLE987"
         result = self.anonymizer.anonymize(text, profile=self.profile_name)
         self.assertIn(self.label, result.details)
         self.assertIn(text, result.details[self.label])
 
     def test_prefix_unknown_no_match(self):
-        """Test that unknown prefix like STAGE_EXAMPLE is not matched."""
+        """Testaa ettei tuntematon etuliite STAGE_EXAMPLE vastaa."""
         text = "STAGE_EXAMPLE1"
         result = self.anonymizer.anonymize(text, profile=self.profile_name)
-        # Should NOT match prefix_variations pattern
+        # Ei pitäisi vastata prefix_variations-kuviota
         if self.label in result.details:
             self.assertNotIn(text, result.details[self.label])
 
     def test_prefix_in_sentence(self):
-        """Test prefix patterns in context."""
-        text = "Deploy TEST_EXAMPLE42 to production."
+        """Testaa etuliitekuviot lauseyhteydessä."""
+        text = "Julkaise TEST_EXAMPLE42 tuotantoon."
         result = self.anonymizer.anonymize(text, profile=self.profile_name)
         self.assertIn(self.label, result.details)
         self.assertIn("TEST_EXAMPLE42", result.details[self.label])
 
     # =========================================================================
-    # Pattern: alphanumeric_suffix - \\bEXAMPLE[A-Za-z0-9]{3,6}\\b
-    # Matches EXAMPLE followed by 3-6 alphanumeric characters
+    # Kuvio: alphanumeric_suffix - \\bEXAMPLE[A-Za-z0-9]{3,6}\\b
+    # Vastaa EXAMPLE ja 3-6 kirjain-numero-merkkiä
     # =========================================================================
     def test_alphanumeric_letters_only(self):
-        """Test detection of EXAMPLE followed by letters only."""
+        """Testaa EXAMPLE ja pelkkiä kirjaimia perässä."""
         text = "EXAMPLEabc"
         result = self.anonymizer.anonymize(text, profile=self.profile_name)
         self.assertIn(self.label, result.details)
         self.assertIn(text, result.details[self.label])
 
     def test_alphanumeric_mixed(self):
-        """Test detection of EXAMPLE followed by mixed alphanumeric."""
+        """Testaa EXAMPLE ja sekoitus kirjaimia ja numeroita."""
         text = "EXAMPLE1a2b"
         result = self.anonymizer.anonymize(text, profile=self.profile_name)
         self.assertIn(self.label, result.details)
         self.assertIn(text, result.details[self.label])
 
     def test_alphanumeric_uppercase(self):
-        """Test detection of EXAMPLE followed by uppercase alphanumeric."""
+        """Testaa EXAMPLE ja isoja kirjaimia perässä."""
         text = "EXAMPLEABC"
         result = self.anonymizer.anonymize(text, profile=self.profile_name)
         self.assertIn(self.label, result.details)
         self.assertIn(text, result.details[self.label])
 
     def test_alphanumeric_too_short(self):
-        """Test that EXAMPLE followed by 2 chars is not matched by alphanumeric pattern."""
+        """Testaa ettei EXAMPLE ja 2 merkkiä vastaa alphanumeric-kuviota."""
         text = "EXAMPLEab"
         result = self.anonymizer.anonymize(text, profile=self.profile_name)
-        # Should NOT match alphanumeric_suffix pattern (requires 3-6)
+        # Ei pitäisi vastata alphanumeric_suffix-kuviota (vaatii 3-6)
         if self.label in result.details:
             self.assertNotIn(text, result.details[self.label])
 
     def test_alphanumeric_max_length(self):
-        """Test detection of EXAMPLE followed by 6 alphanumeric chars."""
+        """Testaa EXAMPLE ja 6 kirjain-numero-merkkiä."""
         text = "EXAMPLEabcdef"
         result = self.anonymizer.anonymize(text, profile=self.profile_name)
         self.assertIn(self.label, result.details)
         self.assertIn(text, result.details[self.label])
 
     def test_alphanumeric_too_long(self):
-        """Test that EXAMPLE followed by 7+ chars is not matched by alphanumeric pattern."""
+        """Testaa ettei EXAMPLE ja 7+ merkkiä vastaa alphanumeric-kuviota."""
         text = "EXAMPLEabcdefg"
         result = self.anonymizer.anonymize(text, profile=self.profile_name)
-        # Should NOT match alphanumeric_suffix pattern (requires 3-6)
+        # Ei pitäisi vastata alphanumeric_suffix-kuviota (vaatii 3-6)
         if self.label in result.details:
             self.assertNotIn(text, result.details[self.label])
 
     # =========================================================================
-    # Edge cases and multiple matches
+    # Reunatapaukset ja useat osumat
     # =========================================================================
     def test_empty_text(self):
-        """Test that empty text produces no detections."""
+        """Testaa ettei tyhjä teksti tuota havaintoja."""
         text = ""
         result = self.anonymizer.anonymize(text, profile=self.profile_name)
         self.assertNotIn(self.label, result.details)
 
     def test_multiple_patterns_in_text(self):
-        """Test detection of multiple EXAMPLE patterns in one text."""
-        text = "Check EXAMPLE, EXAMPLE987, and TEST_EXAMPLE1 for issues."
+        """Testaa useiden EXAMPLE-kuvioiden havaitseminen yhdessä tekstissä."""
+        text = "Tarkista EXAMPLE1, EXAMPLE987 ja TEST_EXAMPLE1 järjestelmästä."
         result = self.anonymizer.anonymize(text, profile=self.profile_name)
         self.assertIn(self.label, result.details)
         entities = result.details[self.label]
-        self.assertIn("EXAMPLE", entities)
+        # Tarkista että jokainen odotettu arvo löytyy listasta
+        self.assertIn("EXAMPLE1", entities)
         self.assertIn("EXAMPLE987", entities)
         self.assertIn("TEST_EXAMPLE1", entities)
 
     def test_word_boundary_prevents_partial_match(self):
-        """Test that word boundaries prevent matching inside other words."""
+        """Testaa että sananrajat estävät osittaiset osumat."""
         text = "NOTEXAMPLE987HERE"
         result = self.anonymizer.anonymize(text, profile=self.profile_name)
-        # Word boundary should prevent matching EXAMPLE987 inside this string
+        # Sananrajan pitäisi estää EXAMPLE987 osuman tämän merkkijonon sisällä
         if self.label in result.details:
             self.assertNotIn("EXAMPLE987", result.details[self.label])
 

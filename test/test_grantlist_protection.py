@@ -44,6 +44,13 @@ class TestGrantlistNameProtection(unittest.TestCase):
 
     def tearDown(self):
         """Clean up temporary test profiles."""
+        # Reset ConfigCache singleton
+        from text_anonymizer.config_cache import ConfigCache
+        ConfigCache.reset_instance()
+
+        # Reset profile analyzers cache
+        self.anonymizer._profile_analyzers_cache.clear()
+
         # Restore original CONFIG_DIR
         if self.original_config_dir:
             os.environ["CONFIG_DIR"] = self.original_config_dir
@@ -54,8 +61,6 @@ class TestGrantlistNameProtection(unittest.TestCase):
         if self.temp_config_dir and os.path.exists(self.temp_config_dir):
             shutil.rmtree(self.temp_config_dir)
 
-        # Reset profile analyzers cache
-        self.anonymizer._profile_analyzers_cache.clear()
 
     def _setup_temp_profile_with_grantlist(self, profile_name: str, names: list) -> str:
         """
@@ -71,6 +76,10 @@ class TestGrantlistNameProtection(unittest.TestCase):
 
         # Set CONFIG_DIR to use temporary directory
         os.environ["CONFIG_DIR"] = temp_config_dir
+
+        # IMPORTANT: Reset ConfigCache singleton to force it to reload from new CONFIG_DIR
+        from text_anonymizer.config_cache import ConfigCache
+        ConfigCache.reset_instance()
 
         # Create profile directory
         profile_dir = os.path.join(temp_config_dir, profile_name)
@@ -108,7 +117,6 @@ class TestGrantlistNameProtection(unittest.TestCase):
         self.assertTrue(has_person_detection, "Should detect person names without grantlist")
 
         logger.info("Names correctly detected and anonymized without grantlist")
-        return result
 
     def test_names_protected_with_grantlist(self):
         """Test that grantlisted names are NOT anonymized."""
@@ -238,6 +246,10 @@ class TestGrantlistNameProtection(unittest.TestCase):
         temp_config_dir = tempfile.mkdtemp()
         self.temp_config_dir = temp_config_dir
         os.environ["CONFIG_DIR"] = temp_config_dir
+
+        # IMPORTANT: Reset ConfigCache singleton to force it to reload from new CONFIG_DIR
+        from text_anonymizer.config_cache import ConfigCache
+        ConfigCache.reset_instance()
 
         # Create profile 1
         profile1_dir = os.path.join(temp_config_dir, "profile1")
