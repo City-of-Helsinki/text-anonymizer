@@ -1,14 +1,12 @@
-import csv
-import datetime
 import itertools
-import os
 import random
 
-import spacy
-from spacy.training import Example
 from spacy.util import minibatch, compounding
 
 from evaluation import evaluate_nlp
+
+# This script is deprecated and used only for reference
+raise DeprecationWarning("This script is deprecated and used only for reference. ")
 
 print("Starting fine tuning of spacy model for Finnish names, helsinki streets and areas")
 
