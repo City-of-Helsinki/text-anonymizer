@@ -32,39 +32,13 @@ ENABLE_STREET_CARDINAL = False
 # Configuration for data generation
 DATA_CONFIG = {
     'areas_size': 150,
-    'streets_size': 275,
+    'streets_size': 675,
     'streets_size_with_grammatical_variations': 395,
     'names_size': 1575,
     'negative_examples_size': 500,
     'mixed_person_street': 100,
     'mixed_person_area': 40,
 }
-
-#  Training Results:
-#   • Final F1 Score: 55.61%
-#   • Improvement: +4.19%
-#   • Final Precision: 42.63%
-#   • Final Recall: 79.96%
-#
-# Test Results:
-#   • Names Recognition: 69.0%
-#   • Streets Recognition: 98.0%
-#   • Areas Recognition: 98.0%
-#   • Overall Test Score: 88.3%
-# Test Results:
-#   • Names Recognition: 74.0%
-#   • Streets Recognition: 100.0%
-#   • Areas Recognition: 97.0%
-#   • Overall Test Score: 90.3%
-# DATA_CONFIG = {
-#     'areas_size': 150,
-#     'streets_size': 975,
-#     'names_size': 675,
-#     'negative_examples_size': 500,
-#     'mixed_person_street': 300,
-#     'mixed_person_area': 100,
-#     'mixed_triple': 50,
-# }
 
 def validate_entity_alignment(nlp, text: str, entities: List[List]) -> bool:
     """

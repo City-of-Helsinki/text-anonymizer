@@ -6,7 +6,7 @@ model = f"../custom_spacy_model/{FINETUNED_MODEL_VERSION}"
 
 nlp = spacy.load(model)
 
-text_fi = """Suggested test sentences (2 per entity type)
+text_fi = """
 Kokous alkaa tarkalleen klo 14.30 iltapäivällä.
 Viimeinen juna Helsinkiin lähtee yleensä puolen yön aikaan.
 
