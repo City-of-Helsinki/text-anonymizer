@@ -10,17 +10,15 @@ This module handles:
 """
 
 import csv
-import itertools
 import os
 import random
 from typing import List, Tuple, Optional
 
-import spacy
 from spacy.training import Example
 from spacy.training.iob_utils import offsets_to_biluo_tags
 
 # Use fixed seed for reproducibility
-random.seed(9738406)
+random.seed(78608831)
 
 # Entity type constants
 STREET_ENTITY = 'LOC'
@@ -163,7 +161,6 @@ def normalize_finnish_suffixes(text: str, base_word: str, suffixed_word: str) ->
         'katussa': 'kadussa',
         'katun':  'kadun',
         'katulle': 'kadulle',
-        'katussa': 'kadussa',
 
         # tie
         'tiella': 'tiellä',
@@ -481,6 +478,10 @@ class TrainingDataGenerator:
 
         # Generate negative examples
         self._generate_negative_examples()
+
+        # Generate additional entity type examples (TIME, FAC, EVENT, etc.)
+        if ENABLE_ADDITIONAL_ENTITY_TRAINING:
+            self._generate_additional_entity_examples()
 
         print(f"\nTotal training examples generated: {len(self.train_data)}")
         print("="*80 + "\n")
@@ -906,40 +907,103 @@ class TrainingDataGenerator:
             example = Example.from_dict(doc, {"entities": entities})
             self.train_data.append(example)
 
+    def _generate_additional_entity_examples(self):
+        """Generate training examples for additional entity types.
 
-def prepare_training_data(base_model: str = "fi_core_news_lg", seed: int = None) -> Tuple[List[Example], spacy.Language]:
+        These sentences are DIFFERENT from evaluation.py to avoid data leakage.
+        They anchor the labels TIME, FAC, EVENT, PRODUCT, NORP, ORDINAL,
+        WORK_OF_ART, QUANTITY, MONEY, PERCENT so we can monitor if
+        PERSON/LOC fine-tuning interferes with them.
+        """
+        # Training sentences - intentionally simple to align with spaCy tokenization
+        samples = [
+            # TIME – single time phrases
+            ("Kokous alkaa kello yhdeksältä.", [[13, 29, "TIME"]]),   # "kello yhdeksältä"
+            ("Bussi lähtee kello kolmelta.", [[13, 27, "TIME"]]),     # "kello kolmelta"
+
+            # FAC – simple building/place names without hyphens
+            ("Tapaaminen on kaupungintalolla.", [[14, 30, "FAC"]]),   # "kaupungintalolla"
+            ("Kokous järjestetään Messukeskuksessa.", [[20, 36, "FAC"]]),  # "Messukeskuksessa"
+
+            # EVENT – clear event names
+            ("Talvifestivaali houkutteli tuhansia ihmisiä.", [[0, 15, "EVENT"]]),  # "Talvifestivaali"
+
+            # PRODUCT – product/brand names
+            ("Ostin uuden Lumme pesuaineen.", [[12, 17, "PRODUCT"]]),   # "Lumme"
+            ("Leivoin kakun Blueberry Mix -jauheesta.", [[14, 27, "PRODUCT"]]),  # "Blueberry Mix"
+
+            # ORDINAL – Finnish ordinals as single tokens
+            ("Hän asuu talon kolmannessa kerroksessa.", [[15, 26, "ORDINAL"]]),  # "kolmannessa"
+            ("Joukkue tuli neljänneksi kilpailussa.", [[13, 24, "ORDINAL"]]),    # "neljänneksi"
+
+            # WORK_OF_ART – clear titles
+            ("Luin kirjan Sateen jälkeen eilen.", [[12, 26, "WORK_OF_ART"]]),    # "Sateen jälkeen"
+            ("Elokuva Hiljainen katu oli vaikuttava.", [[8, 22, "WORK_OF_ART"]]),  # "Hiljainen katu"
+
+            # QUANTITY – simple measurement phrases
+            ("Tarvitsemme kaksi litraa maitoa.", [[12, 31, "QUANTITY"]]),   # "kaksi litraa maitoa"
+            ("Tilasimme viisi kiloa hiekkaa.", [[10, 29, "QUANTITY"]]),     # "viisi kiloa hiekkaa"
+
+            # PERCENT – percentages as phrases
+            ("Työttömyys laski viisi prosenttia.", [[17, 33, "PERCENT"]]),    # "viisi prosenttia"
+        ]
+
+        added = 0
+        skipped = 0
+        for text, entities in samples:
+            example = create_validated_example(self.nlp, text, entities)
+            if example:
+                self.train_data.append(example)
+                added += 1
+            else:
+                skipped += 1
+
+        print(f"Generated {added} additional entity examples (TIME, FAC, EVENT, etc.)")
+        if skipped > 0:
+            print(f"  Skipped {skipped} misaligned additional entity examples")
+
+
+# Toggle to include training examples for additional entity types (TIME, FAC, etc.)
+# These use DIFFERENT sentences than evaluation.py to avoid data leakage
+ENABLE_ADDITIONAL_ENTITY_TRAINING = True
+
+
+def prepare_training_data(base_model: str = "fi_core_news_lg", seed: int = None) -> Tuple[list, object]:
     """
-    Main function to prepare all training data
+    Prepare training data for SpaCy NER fine-tuning.
+
+    This is the main entry point for data preparation, orchestrating:
+    1. Loading raw data (names, streets, areas, etc.)
+    2. Generating training examples using TrainingDataGenerator
+    3. Returning the training data and NLP model
 
     Args:
-        base_model: Name of the base SpaCy model to use
-        seed: Random seed for reproducibility (None = use default 1236)
+        base_model: Base SpaCy model name to load
+        seed: Optional random seed for reproducibility
 
     Returns:
-        Tuple of (training_data, nlp_model)
+        Tuple of (training_examples, nlp_model)
+            - training_examples: List of SpaCy Example objects
+            - nlp_model: Loaded SpaCy language model
     """
-    # Set random seed (use passed seed or default)
+    import spacy
+
+    # Set random seed if provided
     if seed is not None:
         random.seed(seed)
-        print(f"Starting ETL and data preparation (Seed: {seed})...")
-    else:
-        print("Starting ETL and data preparation...")
 
     # Load base model
+    print(f"Loading base model: {base_model}...")
     nlp = spacy.load(base_model)
 
     # Load raw data
+    print("Loading raw data (names, streets, areas, etc.)...")
     data_loader = DataLoader()
     data_loader.load_all()
 
-    # Generate training examples
+    # Generate training data
+    print("Generating training examples...")
     generator = TrainingDataGenerator(nlp, data_loader)
-    train_data = generator.generate_all()
+    training_examples = generator.generate_all()
 
-    return train_data, nlp
-
-
-if __name__ == "__main__":
-    # Test data preparation
-    train_data, nlp = prepare_training_data()
-    print(f"Prepared {len(train_data)} training examples")
+    return training_examples, nlp
