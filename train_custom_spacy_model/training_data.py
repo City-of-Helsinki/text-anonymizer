@@ -1658,6 +1658,14 @@ FALSE_POSITIVES = [
     'Turha huolehtia turhasta.',
     'Kaikki järjestyy aikanaan.',
     'Kärsivällisyys on hyve tässäkin.',
+    # Address confusion negatives
+    'Kaupunki sijaitsee meren rannalla ja tarjoaa upeat maisemat - rantatiellä näin 30 varpusta.',
+    'Juoksin eilen Tampereen maratonissa 42km',
+    'Asun Espoossa lähellä merta ja nautin kadulla kulkevista puluista.',
+    'Ostin uuden pyörän Haiku 30 ja ajelen sillä usein puistossa.',
+    'Kävin eilen kaupassa ostamassa ruokaa, loppusumma oli 40e ja tapasin myös vanhan ystävän.',
+    'Lähden viikonloppuna Helsinkiin tietä 4 mökille rentoutumaan luonnon keskelle.',
+    'Tykkään lukea kirjoja, suosikkini on Matkustaja 20'
 ]
 
 # Generate additional negative examples using templates

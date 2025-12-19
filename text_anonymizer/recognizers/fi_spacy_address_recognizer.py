@@ -18,40 +18,38 @@ class SpacyAddressRecognizer(LocalRecognizer):
     """
     # See https://demos.explosion.ai/matcher for explanation of patterns
     DEFAULT_PATTERNS = [
-        # Most specific: street + number + letter + number
+        # LOC/GPE-anchored address patterns with optional alpha prefix
+        # e.g. "Agnes Sjöbergin katu 1", "Antti Mäen kuja 99 D 2"
         [
-            {'ENT_TYPE': 'LOC', 'OP': '+'},
-            {'ENT_TYPE': 'CARDINAL'},
+            {'IS_ALPHA': True, 'OP': '*'},
+            {'ENT_TYPE': {'IN': ['LOC', 'GPE']}},
+            {'IS_DIGIT': True},
+        ],
+        [
+            {'IS_ALPHA': True, 'OP': '*'},
+            {'ENT_TYPE': {'IN': ['LOC', 'GPE']}},
+            {'IS_DIGIT': True},
             {'IS_ALPHA': True, 'LENGTH': 1},
-            {'IS_DIGIT': True}
         ],
-        # Medium: street + number + letter
         [
-            {'ENT_TYPE': 'LOC', 'OP': '+'},
-            {'ENT_TYPE': 'CARDINAL'},
-            {'IS_ALPHA': True, 'LENGTH': 1}
-        ],
-        # Least specific: street + number only
-        [
-            {'ENT_TYPE': 'LOC', 'OP': '+'},
-            {'ENT_TYPE': 'CARDINAL'}
-        ],
-        # Same patterns for GPE
-        [
-            {'ENT_TYPE': 'GPE', 'OP': '+'},
-            {'ENT_TYPE': 'CARDINAL'},
+            {'IS_ALPHA': True, 'OP': '*'},
+            {'ENT_TYPE': {'IN': ['LOC', 'GPE']}},
+            {'IS_DIGIT': True},
             {'IS_ALPHA': True, 'LENGTH': 1},
-            {'IS_DIGIT': True}
+            {'IS_DIGIT': True},
+        ],
+        # Fallback patterns that do not rely on ENT_TYPE, only on shape
+        # e.g. "Bulevardi 18", "Hyttitie 27", "Hakaniemen halli 84"
+        [
+            {'IS_ALPHA': True, 'OP': '+'},
+            {'IS_DIGIT': True},
         ],
         [
-            {'ENT_TYPE': 'GPE', 'OP': '+'},
-            {'ENT_TYPE': 'CARDINAL'},
-            {'IS_ALPHA': True, 'LENGTH': 1}
+            {'IS_ALPHA': True, 'OP': '+'},
+            {'IS_DIGIT': True},
+            {'IS_ALPHA': True, 'LENGTH': 1},
+            {'IS_DIGIT': True, 'OP': '?'},
         ],
-        [
-            {'ENT_TYPE': 'GPE', 'OP': '+'},
-            {'ENT_TYPE': 'CARDINAL'}
-        ]
     ]
 
     RESULT_TYPE = "Address_pattern_"
@@ -103,10 +101,13 @@ class SpacyAddressRecognizer(LocalRecognizer):
 
                 # Only process if this is the longest match so far
                 if span_length > max_span_length:
-                    first_entity = doc.ents[0].label_
+                    # Some texts may have no entities at all; handle that gracefully
+                    first_entity = doc.ents[0].label_ if doc.ents else "NONE"
                     label = self.supported_entities[0]
                     match_pattern = matcher.get(match_id)
-                    textual_explanation = f"First entity: {first_entity}, Pattern: {json.dumps(match_pattern)}"
+                    textual_explanation = (
+                        f"First entity: {first_entity}, Pattern: {json.dumps(match_pattern)}"
+                    )
 
                     explanation = AnalysisExplanation(
                         recognizer=self.__class__.__name__,
@@ -123,8 +124,13 @@ class SpacyAddressRecognizer(LocalRecognizer):
                             start_index = span.start_char + m.start()
 
                     if span:
-                        best_result = RecognizerResult(label, start_index, end_index, self.score,
-                                                       analysis_explanation=explanation)
+                        best_result = RecognizerResult(
+                            label,
+                            start_index,
+                            end_index,
+                            self.score,
+                            analysis_explanation=explanation,
+                        )
                         max_span_length = span_length
 
             if best_result:

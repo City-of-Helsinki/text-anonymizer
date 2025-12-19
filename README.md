@@ -329,19 +329,23 @@ It will output evaluation results that are included in this README.
 Evaluation dataset consists of 101 sample sentences.
 
 
-Date: 01.12.2025
+#### Date: 19.12.2025
 
 
 Evaluation results: 
 
-| Entity   |   precision |   recall |   f1-score |   samples |
-|:---------|------------:|---------:|-----------:|----------:|
-| PERSON   |    0.730769 | 0.926829 |   0.817204 |        41 |
-| DATE     |    0.272727 | 0.8      |   0.40678  |        15 |
-| LOC      |    0.46875  | 0.5      |   0.483871 |        30 |
-| CARDINAL |    0.133333 | 1        |   0.235294 |         4 |
-| GPE      |    0.106061 | 0.875    |   0.189189 |         8 |
-| O        |    0        | 0        |   0        |         3 |
+| Entity      |   precision |   recall |   f1-score |   samples |
+|:------------|------------:|---------:|-----------:|----------:|
+| PERSON      |    0.64     | 0.780488 |   0.703297 |        41 |
+| DATE        |    0.302326 | 0.866667 |   0.448276 |        15 |
+| ORG         |    0        | 0        |   0        |           |
+| LOC         |    0.588235 | 0.666667 |   0.625    |        30 |
+| CARDINAL    |    0.129032 | 1        |   0.228571 |         4 |
+| GPE         |    0.135593 | 1        |   0.238806 |         8 |
+| O           |    0        | 0        |   0        |         3 |
+| NORP        |    0        | 0        |   0        |           |
+| WORK_OF_ART |    0        | 0        |   0        |           |
+
 
 
 Date: 12.11.2025
@@ -369,18 +373,21 @@ Evaluation results:
 
 #### Evaluation results
 
-#### Date: 01.12.2025
+#### Date: 19.12.2025
 
 Notable changes: 
 - Spacy model fine tuning pipeline refactored. 
 - Improved street name and name confusion.
 - Fixed and improved evaluation and test scripts.
 
+#### Date: 19.12.2025
+
 | Test    |   Accuracy |   Missed |   Samples |
 |:--------|-----------:|---------:|----------:|
-| words   |      99.66 |       17 |      5000 |
-| names   |      95.6  |       16 |      5000 |
-| streets |      97.9  |       21 |      1000 |
+| words   |      97.82 |      109 |      5000 |
+| names   |      98.78 |        2 |      5000 |
+| streets |     100    |        0 |      1000 |
+
 
 #### Date: 23.04.2024
 

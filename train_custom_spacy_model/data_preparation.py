@@ -20,22 +20,26 @@ from spacy.training import Example
 from spacy.training.iob_utils import offsets_to_biluo_tags
 
 # Use fixed seed for reproducibility
-random.seed(1234)
+random.seed(9738406)
 
 # Entity type constants
 STREET_ENTITY = 'LOC'
 AREA_ENTITY = 'GPE'
 NAME_ENTITY = 'PERSON'
 
+# Toggle CARDINAL labels in street-related training data
+# When False, street examples will not add CARDINAL entities for house numbers.
+ENABLE_STREET_CARDINAL = False
+
 # Configuration for data generation
 DATA_CONFIG = {
     'areas_size': 150,
     'streets_size': 275,
-    'streets_size_with_grammatical_variations': 395, # 395 samples
-    'names_size': 1575, # Improvement 675->1675
+    'streets_size_with_grammatical_variations': 395,
+    'names_size': 1575,
     'negative_examples_size': 500,
-    'mixed_person_street': 100, # 300 -> 100 improvement
-    'mixed_person_area': 40, # 30 -> 87% f1
+    'mixed_person_street': 100,
+    'mixed_person_area': 40,
 }
 
 #  Training Results:
@@ -285,15 +289,23 @@ class SentenceGenerator:
     # )
 
     @staticmethod
-    def generate_sentence(entity_text: str, sentence_list: List[str]) -> Tuple[str, int, int]:
+    def generate_sentence(entity_text: str, sentence_list: List[str], include_number: bool = False) -> Tuple[str, int, int, Optional[List[Tuple[int, int, str]]]]:
         """
         Generate a sentence with the entity at a specific position.
         Handles suffixes attached to the {s} placeholder (e.g., {s}ssa, {s}lla).
         Normalizes common Finnish suffix mistakes.
 
+        Args:
+            entity_text: The entity text to insert (e.g., street name)
+            sentence_list: List of sentence templates to choose from
+            include_number: If True, also find and track numbers in the sentence
+
         Returns:
-            Tuple of (sentence, start_pos, end_pos) where end_pos includes any suffix
+            Tuple of (sentence, start_pos, end_pos, number_infos)
+            where number_infos is a list of (number_start, number_end, number_str) or None
         """
+        import re
+
         try:
             # Select a random sentence template
             sent = random.choice(sentence_list)
@@ -304,6 +316,11 @@ class SentenceGenerator:
             # Replace placeholder with entity, eg. {s} -> kankaantie
             if '{s}' in sent:
                 sent = sent.replace('{s}', entity_text)
+
+            # Replace {number} placeholder if present with a random number
+            if '{number}' in sent:
+                number = random.randint(1, 150)
+                sent = sent.replace('{number}', str(number))
 
             # Replace other placeholders
             if '{adj}' in sent:
@@ -329,15 +346,47 @@ class SentenceGenerator:
                 entity_start = sent.find(entity_text)
                 if entity_start == -1:
                     # Text was normalized and entity not found, retry
-                    return SentenceGenerator.generate_sentence(entity_text, sentence_list)
+                    return SentenceGenerator.generate_sentence(entity_text, sentence_list, include_number)
                 entity_end = entity_start + len(entity_text) + len(suffix)
             else:
                 entity_end = entity_start + len(search_text)
 
-            return sent, entity_start, entity_end
+            # Find all numbers in the sentence if requested
+            number_infos = None
+            if include_number:
+                number_infos = []
+                # Find standalone numbers with optional Finnish suffixes like :n, :ssa, :lle, :sta
+                # These suffixes are attached with colon and SpaCy tokenizes them together
+                # Pattern matches: 10, 10:n, 10:ssa, 10:lle, 10:sta, 10:ssä, 10:ltä, etc.
+                for match in re.finditer(r'\b(\d{1,3})(:[a-zäöå]+)?\b', sent):
+                    num_start = match.start()
+                    num_end = match.end()  # Includes the suffix if present
+                    num_str = match.group()
+
+                    # Skip if it overlaps with entity
+                    if (num_start >= entity_start and num_start < entity_end) or \
+                       (num_end > entity_start and num_end <= entity_end):
+                        continue
+
+                    # Skip postal codes (5 digit numbers starting with 0)
+                    # Check context - if followed by more digits, skip
+                    if num_end < len(sent) and sent[num_end:num_end+1].isdigit():
+                        continue
+                    if num_start > 0 and sent[num_start-1:num_start].isdigit():
+                        continue
+
+                    number_infos.append((num_start, num_end, num_str))
+
+                # Only keep first number to avoid over-annotation
+                if number_infos:
+                    number_infos = number_infos[:1]
+                else:
+                    number_infos = None
+
+            return sent, entity_start, entity_end, number_infos
         except ValueError:
             # Recursively try again if entity not found in generated sentence
-            return SentenceGenerator.generate_sentence(entity_text, sentence_list)
+            return SentenceGenerator.generate_sentence(entity_text, sentence_list, include_number)
 
     @staticmethod
     def generate_evaluation_sentence(value: str, sentence: str) -> Tuple[str, int, int]:
@@ -444,7 +493,7 @@ class TrainingDataGenerator:
 
         skipped = 0
         for name in name_list:
-            sentence, start, end = SentenceGenerator.generate_sentence(name, SENTENCES_NAME)
+            sentence, start, end, _ = SentenceGenerator.generate_sentence(name, SENTENCES_NAME)
             entities = [[start, end, NAME_ENTITY]]
 
             example = create_validated_example(self.nlp, sentence, entities)
@@ -457,7 +506,7 @@ class TrainingDataGenerator:
             print(f"  Skipped {skipped} misaligned name examples")
 
     def _generate_street_examples(self, street_list: List[str]):
-        """Generate training examples for street names"""
+        """Generate training examples for street names with optional CARDINAL for numbers"""
         from training_data import SENTENCES_STREETS
 
         skipped = 0
@@ -465,10 +514,15 @@ class TrainingDataGenerator:
             street_lower = street.lower()
 
             # Choose sentence templates based on street name type
+            # Use include_number=True to generate and track numbers in the sentence
             if ' ' not in street_lower and any(x in street_lower for x in ['katu', 'tie', 'polku']):
-                sentence, start, end = SentenceGenerator.generate_sentence(street_lower, SENTENCES_STREETS)
+                sentence, start, end, number_infos = SentenceGenerator.generate_sentence(
+                    street_lower, SENTENCES_STREETS, include_number=True
+                )
             else:
-                sentence, start, end = SentenceGenerator.generate_sentence(street_lower, SENTENCES_STREETS[:11])
+                sentence, start, end, number_infos = SentenceGenerator.generate_sentence(
+                    street_lower, SENTENCES_STREETS[:11], include_number=True
+                )
 
             # Handle multi-word streets
             parts = street_lower.split(' ')
@@ -480,7 +534,23 @@ class TrainingDataGenerator:
                     entities.append([i, j, STREET_ENTITY])
                     i = j + 1
             else:
-                entities = [[start, end, STREET_ENTITY]]
+                entities.append([start, end, STREET_ENTITY])
+
+            # Add CARDINAL entities for numbers if present (configurable)
+            if ENABLE_STREET_CARDINAL and number_infos:
+                for num_start, num_end, _ in number_infos:
+                    # Check it doesn't overlap with street entity
+                    overlaps = False
+                    for ent in entities:
+                        ent_start, ent_end, _ = ent
+                        if (num_start >= ent_start and num_start < ent_end) or \
+                           (num_end > ent_start and num_end <= ent_end):
+                            overlaps = True
+                            break
+                    if not overlaps:
+                        entities.append([num_start, num_end, 'CARDINAL'])
+                # Sort by position
+                entities.sort(key=lambda x: x[0])
 
             example = create_validated_example(self.nlp, sentence, entities)
             if example:
@@ -492,10 +562,19 @@ class TrainingDataGenerator:
             if ' ' not in street_lower and random.random() < 0.3:
                 variations = SentenceGenerator.augment_street_variations(street_lower, max_variations=1)
                 for street_var in variations:
-                    sentence_var, start_var, end_var = SentenceGenerator.generate_sentence(
-                        street_var, SENTENCES_STREETS[:5]
+                    sentence_var, start_var, end_var, number_infos_var = SentenceGenerator.generate_sentence(
+                        street_var, SENTENCES_STREETS[:5], include_number=True
                     )
                     entities_var = [[start_var, end_var, STREET_ENTITY]]
+
+                    # Add CARDINAL for variation too (configurable)
+                    if ENABLE_STREET_CARDINAL and number_infos_var:
+                        for num_start_var, num_end_var, _ in number_infos_var:
+                            if not (num_start_var >= start_var and num_start_var < end_var) and \
+                               not (num_end_var > start_var and num_end_var <= end_var):
+                                entities_var.append([num_start_var, num_end_var, 'CARDINAL'])
+                        entities_var.sort(key=lambda x: x[0])
+
                     example_var = create_validated_example(self.nlp, sentence_var, entities_var)
                     if example_var:
                         self.train_data.append(example_var)
@@ -524,8 +603,18 @@ class TrainingDataGenerator:
             # Create examples by combining each street with a random template from its case
             for street in streets:
                 # The street is already inflected (e.g., "Kankaankatu", "Kankaanakadulla")
-                sentence, start, end = SentenceGenerator.generate_sentence(street, templates)
+                sentence, start, end, number_infos = SentenceGenerator.generate_sentence(
+                    street, templates, include_number=True
+                )
                 entities = [[start, end, STREET_ENTITY]]
+
+                # Add CARDINAL entities for numbers if present (configurable)
+                if ENABLE_STREET_CARDINAL and number_infos:
+                    for num_start, num_end, _ in number_infos:
+                        if not (num_start >= start and num_start < end) and \
+                           not (num_end > start and num_end <= end):
+                            entities.append([num_start, num_end, 'CARDINAL'])
+                    entities.sort(key=lambda x: x[0])
 
                 example = create_validated_example(self.nlp, sentence, entities)
                 if example:
@@ -547,7 +636,7 @@ class TrainingDataGenerator:
 
         skipped = 0
         for area in area_list:
-            sentence, start, end = SentenceGenerator.generate_sentence(area.lower(), SENTENCES_AREAS)
+            sentence, start, end, _ = SentenceGenerator.generate_sentence(area.lower(), SENTENCES_AREAS)
             entities = [[start, end, AREA_ENTITY]]
 
             example = create_validated_example(self.nlp, sentence, entities)
@@ -619,20 +708,40 @@ class TrainingDataGenerator:
             if street_end > len(text):
                 continue
 
+            # Find the number in text (if pattern includes {number})
+            number_str = str(number)
+            number_start = text.find(number_str)
+            number_end = number_start + len(number_str) if number_start != -1 else -1
+
             # Create entities list (order by position)
-            if name_start < street_start:
-                entities = [
-                    [name_start, name_end, NAME_ENTITY],
-                    [street_start, street_end, STREET_ENTITY]
-                ]
-            else:
-                entities = [
-                    [street_start, street_end, STREET_ENTITY],
-                    [name_start, name_end, NAME_ENTITY]
-                ]
+            entities = []
+            entity_positions = []
+
+            # Add name entity
+            entity_positions.append((name_start, [name_start, name_end, NAME_ENTITY]))
+
+            # Add street entity
+            entity_positions.append((street_start, [street_start, street_end, STREET_ENTITY]))
+
+            # Add cardinal entity for number (if enabled and found and doesn't overlap with other entities)
+            if ENABLE_STREET_CARDINAL and number_start != -1:
+                # Check for overlap with street or name
+                overlaps = False
+                if (number_start >= street_start and number_start < street_end) or \
+                   (number_end > street_start and number_end <= street_end):
+                    overlaps = True
+                if (number_start >= name_start and number_start < name_end) or \
+                   (number_end > name_start and number_end <= name_end):
+                    overlaps = True
+
+                if not overlaps:
+                    entity_positions.append((number_start, [number_start, number_end, 'CARDINAL']))
+
+            # Sort entities by position and extract just the entity data
+            entity_positions.sort(key=lambda x: x[0])
+            entities = [ep[1] for ep in entity_positions]
 
             # Validate using spaCy before adding to training data
-            # This filters out examples with tokenization misalignment
             example = create_validated_example(self.nlp, text, entities)
             if example:
                 return example
@@ -798,17 +907,23 @@ class TrainingDataGenerator:
             self.train_data.append(example)
 
 
-def prepare_training_data(base_model: str = "fi_core_news_lg") -> Tuple[List[Example], spacy.Language]:
+def prepare_training_data(base_model: str = "fi_core_news_lg", seed: int = None) -> Tuple[List[Example], spacy.Language]:
     """
     Main function to prepare all training data
 
     Args:
         base_model: Name of the base SpaCy model to use
+        seed: Random seed for reproducibility (None = use default 1236)
 
     Returns:
         Tuple of (training_data, nlp_model)
     """
-    print("Starting ETL and data preparation...")
+    # Set random seed (use passed seed or default)
+    if seed is not None:
+        random.seed(seed)
+        print(f"Starting ETL and data preparation (Seed: {seed})...")
+    else:
+        print("Starting ETL and data preparation...")
 
     # Load base model
     nlp = spacy.load(base_model)
@@ -828,4 +943,3 @@ if __name__ == "__main__":
     # Test data preparation
     train_data, nlp = prepare_training_data()
     print(f"Prepared {len(train_data)} training examples")
-
