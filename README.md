@@ -326,26 +326,30 @@ It will output evaluation results that are included in this README.
 
 ### Evaluation results for fine tuned model
 
-Evaluation dataset consists of 101 sample sentences.
+
+Evaluation dataset consists of 72 sample sentences.
 
 
-#### Date: 19.12.2025
+Date: 19.12.2025
 
 
 Evaluation results: 
 
-| Entity      |   precision |   recall |   f1-score |   samples |
-|:------------|------------:|---------:|-----------:|----------:|
-| PERSON      |    0.64     | 0.780488 |   0.703297 |        41 |
-| DATE        |    0.302326 | 0.866667 |   0.448276 |        15 |
-| ORG         |    0        | 0        |   0        |           |
-| LOC         |    0.588235 | 0.666667 |   0.625    |        30 |
-| CARDINAL    |    0.129032 | 1        |   0.228571 |         4 |
-| GPE         |    0.135593 | 1        |   0.238806 |         8 |
-| O           |    0        | 0        |   0        |         3 |
-| NORP        |    0        | 0        |   0        |           |
-| WORK_OF_ART |    0        | 0        |   0        |           |
-
+| Entity   |   precision |   recall |   f1-score |   samples |
+|:---------|------------:|---------:|-----------:|----------:|
+| PERSON   |    0.807692 | 1        |   0.893617 |        21 |
+| DATE     |    0        | 0        |   0        |           |
+| LOC      |    0.827586 | 0.827586 |   0.827586 |        29 |
+| CARDINAL |    0.307692 | 0.666667 |   0.421053 |         6 |
+| GPE      |    0.12     | 0.75     |   0.206897 |         4 |
+| ORDINAL  |    0        | 0        |   0        |           |
+| ORG      |    0.333333 | 0.75     |   0.461538 |         4 |
+| QUANTITY |    0.25     | 1        |   0.4      |         1 |
+| FAC      |    0        | 0        |   0        |           |
+| TIME     |    0.5      | 0.5      |   0.5      |         2 |
+| PRODUCT  |    1        | 1        |   1        |         2 |
+| MONEY    |    0        | 0        |   0        |         2 |
+| PERCENT  |    0        | 0        |   0        |         1 |
 
 
 Date: 12.11.2025
@@ -380,14 +384,13 @@ Notable changes:
 - Improved street name and name confusion.
 - Fixed and improved evaluation and test scripts.
 
-#### Date: 19.12.2025
+Date: 19.12.2025
 
 | Test    |   Accuracy |   Missed |   Samples |
 |:--------|-----------:|---------:|----------:|
-| words   |      97.82 |      109 |      5000 |
-| names   |      98.78 |        2 |      5000 |
-| streets |     100    |        0 |      1000 |
-
+| words   |      98.78 |       61 |      5000 |
+| names   |      97.34 |       21 |      5000 |
+| streets |      98.2  |       18 |      1000 |
 
 #### Date: 23.04.2024
 

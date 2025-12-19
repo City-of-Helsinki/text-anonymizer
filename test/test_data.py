@@ -23,7 +23,7 @@ test_addresses_spacy = ['Hei, peruutan kaupunkilehden. Osoitteeni on: Muoniontie
                     ]
 test_names_fi = ['Maija Mehiläinen', 'Silja Laine', 'Marja Mustikkamäki', 'Teppo Tikka', 'Virtanen',
                 'Silja Heikkinen',  'Irmeli', 'Timo', 'Antti', 'Minna', 'Anu', 'Antero', 'Antti Mäki',
-                'Keijo', 'Salomaa', 'Nataljan']
+                'Keijo', 'Salomaa', 'Natalia']
 test_names_en = ['Zhao Lê', 'Andrew Smith', 'John Doe', 'Jane Kreutz', 'Mary Johnson', 'Mary Johnson-Smith', 'Jerome K. Jerome', 'Anna K. Jerome', 'Alfred Kirby']
 test_register_number = ['ABA-303', 'ABA303', 'ABA 303', 'aba-303', 'fdr-361', 'KQC546', 'abc123']
 test_property_identifier = ['22-22-4444-333', '1-1-1-1', '22-1-333-1', '1-22-1-333', '1-22-1-333-4444',

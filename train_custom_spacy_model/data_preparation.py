@@ -32,7 +32,7 @@ ENABLE_STREET_CARDINAL = False
 # Configuration for data generation
 DATA_CONFIG = {
     'areas_size': 150,
-    'streets_size': 675,
+    'streets_size': 875,
     'streets_size_with_grammatical_variations': 395,
     'names_size': 1575,
     'negative_examples_size': 500,
@@ -374,31 +374,57 @@ class SentenceGenerator:
 
     @staticmethod
     def generate_full_names(first_names: List[str], last_names: List[str], amount: int = 1) -> List[str]:
-        """Generate full names with variations"""
-        full_names = []
+        """Generate full names with variations using a 1-100 probability scale.
+
+        Approximate target distribution (over many samples):
+          - ~50% full name (first + last)
+          - ~15% full name (last + first)
+          - ~20% only first name
+          - ~15% only last name
+        Plus orthogonal variations:
+          - ~10% have double or hyphenated first names
+          - ~10% have hyphenated last names
+        """
+        full_names: List[str] = []
+
         for _ in range(amount):
-            random_first_name = random.choice(first_names)
+            # Base first and last names
+            first = random.choice(first_names)
+            last = random.choice(last_names)
 
-            # Add 2 first names sometimes
-            if random.randint(1, 50) == 1:
-                random_first_name += ' ' + random.choice(first_names)
-            elif random.randint(1, 50) == 2:
-                random_first_name += '-' + random.choice(first_names)
+            # --- First name variation (up to ~10% combined) ---
+            r_first = random.randint(1, 100)
+            if r_first <= 5:
+                # 1-5: double first name (e.g., "Matti Juhani")
+                first = f"{first} {random.choice(first_names)}"
+            elif r_first <= 10:
+                # 6-10: hyphenated first name (e.g., "Anna-Kaisa")
+                first = f"{first}-{random.choice(first_names)}"
 
-            # Two part last names
-            random_last_name = random.choice(last_names)
-            if random.randint(1, 50) == 3:
-                random_last_name += '-' + random.choice(last_names)
+            # --- Last name variation (up to ~10%) ---
+            r_last = random.randint(1, 100)
+            if r_last <= 10:
+                # 1-10: hyphenated last name (e.g., "Virtanen-Koskinen")
+                last = f"{last}-{random.choice(last_names)}"
 
-            # Sometimes only first or last name
-            if random.randint(1, 50) == 4:
-                random_name = random_last_name
-            elif random.randint(1, 50) == 5:
-                random_name = random_first_name
+            # --- Overall name format and order ---
+            # Single draw in [1, 100] with simple brackets.
+            r_format = random.randint(1, 100)
+            if r_format <= 20:
+                # 1-20: only first name (~20%)
+                name = first
+            elif r_format <= 35:
+                # 21-35: only last name (~15%)
+                name = last
+            elif r_format <= 85:
+                # 36-85: full name in "first last" order (~50%)
+                name = f"{first} {last}"
             else:
-                random_name = random_first_name + ' ' + random_last_name
+                # 86-100: full name in "last first" order (~15%)
+                name = f"{last} {first}"
 
-            full_names.append(random_name)
+            full_names.append(name)
+
         return full_names
 
     @staticmethod
