@@ -5,3 +5,4 @@ flask-session
 gunicorn
 uvicorn
 asgiref
+watchdog

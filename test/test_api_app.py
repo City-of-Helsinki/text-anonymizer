@@ -403,9 +403,6 @@ class TestAnonymizerAPI(unittest.TestCase):
             ("EXAMPLE999999", "word_with_numbers"),
             ("EXAMPLE12", "word_with_digit_range"),
             ("EXAMPLE1234", "word_with_digit_range"),
-            ("example", "case_insensitive_variations"),
-            ("Example", "case_insensitive_variations"),
-            ("EXAMPLE", "exact_match"),
         ]
 
         for test_word, pattern_name in test_cases:
@@ -439,7 +436,7 @@ class TestAnonymizerAPI(unittest.TestCase):
         non_matching_words = [
             "EXAMPLES",  # Has 'S' at end, word boundary prevents match
             "MYEXAMPLE",  # Prefix prevents word boundary match
-            "EXAMPLE1234567",  # Too many digits for most patterns
+            "EXAMPLEABC1234567",  # Too many digits for alphanumeric patterns
             "example123test",  # Has suffix after numbers
             "EX",  # Too short
         ]

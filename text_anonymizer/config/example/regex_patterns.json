@@ -15,7 +15,7 @@
     {
       "name": "word_with_numbers",
       "pattern": "\\bEXAMPLE[0-9]+\\b",
-      "score": 1.08,
+      "score": 1.03,
       "description": "EXAMPLE followed by one or more digits. Matches EXAMPLE1, EXAMPLE123, EXAMPLE999999"
     },
     {
