@@ -60,6 +60,38 @@ Startup docker container in flask webapp-mode:
 
 Open http://127.0.0.1:8000/ in browser.
 
+### Docker: Using custom configuration profiles
+
+To use custom configuration profiles with Docker, you can map the configuration folder from your host machine to the container using volume mapping.
+
+#### Method 1: Using docker run with volume mapping
+
+Map your local config directory to override the default configuration:
+
+    docker run -v /path/to/your/config:/app/text_anonymizer/config -v /local_data:/data -it text-anonymizer python anonymize_csv.py /data/input.csv /data/output.csv --column_name=text
+
+This allows you to:
+- Customize recognizer patterns (regex_patterns.json)
+- Modify grant and block lists (grantlist.txt, blocklist.txt)
+- Configure language settings (languages-config.yml)
+
+#### Method 2: Using docker-compose with volume mapping
+
+Add a volume mapping to your compose.yml or create a docker-compose.override.yml:
+
+    version: "3.8"
+    services:
+      text_anonymizer:
+        volumes:
+          - ./my-custom-config:/app/text_anonymizer/config
+          - ./data:/data
+
+Then run:
+
+    MODE=api docker-compose up
+
+Note: Configuration profiles (e.g., config/custom/, config/example/) allow you to use different configurations without modifying the default settings. Mount specific profile directories as needed.
+
 
 ## Anonymizer interfaces
 
@@ -210,6 +242,44 @@ You can test this using file: examples/files/sample.csv
 
 You can use different configuration profiles to select different sets of recognizers and settings.
 Configuration profiles are located in config/<profile_name>/ folder. For default profile, folder is config/default/ and profile parameter is empty.
+
+#### Using configuration profiles with Docker
+
+When using Docker, configuration files are embedded in the container image. To use custom configurations:
+
+1. Create your configuration directory structure locally:
+
+    mkdir -p my-config/custom
+    
+Create custom configuration files:
+
+    my-config/custom/grantlist.txt
+    my-config/custom/blocklist.txt
+    my-config/custom/regex_patterns.json
+
+2. Mount the configuration directory when running the container:
+
+    docker run -v $(pwd)/my-config:/app/text_anonymizer/config -it text-anonymizer python anonymize_csv.py input.csv output.csv
+
+3. For docker-compose, add volume mapping in compose.yml:
+
+    volumes:
+      - ./my-config:/app/text_anonymizer/config:ro
+
+The :ro suffix makes the mount read-only for better security.
+
+#### Configuration file locations
+
+When using volume mapping, your local config directory should mirror the container structure:
+
+    my-config/
+    ├── blocklist.txt              # Default blocklist
+    ├── grantlist.txt              # Default grantlist
+    ├── languages-config.yml       # Language settings
+    └── custom/                    # Custom profile
+        ├── blocklist.txt
+        ├── grantlist.txt
+        └── regex_patterns.json
 
 ### Profile specific grant and block lists
 
