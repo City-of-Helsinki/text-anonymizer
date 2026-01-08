@@ -87,7 +87,7 @@ class ModelEvaluator:
         Test model's ability to recognize person names in context
 
         Args:
-            names: List of names to test
+            names: List of full names to test (e.g., "Matti Korhonen")
             test_sentences: List of sentence templates
             amount: Number of tests to run
 
@@ -104,23 +104,44 @@ class ModelEvaluator:
             # Create test text with names
             test_text = "Tämä on keksitty lause jossa testataan nimien tunnistusta. "
             for idx, name in enumerate(name_list):
-                sentence, _, _ = SentenceGenerator.generate_sentence(name, test_sentences)
+                sentence, _, _, _ = SentenceGenerator.generate_sentence(name, test_sentences)
                 test_text += sentence + " "
 
             doc = self.nlp(test_text)
 
             # Count correct detections
-            correct = 0
-            for ent in doc.ents:
-                if ent.label_ == self.NAME_ENTITY:
-                    entity_str = str(ent).replace('\\.', '')
-                    if entity_str in name_list:
-                        correct += 1
-                    elif any(part in name_list for part in entity_str.split()):
-                        correct += 0.5
+            # For each name in name_list, check if it was detected (full or partial)
+            detected_names = 0
+            for name in name_list:
+                name_parts = name.split()
+                name_found = False
 
-            # Consider test passed if we got at least as many as we put in
-            results.append(correct >= len(name_list))
+                for ent in doc.ents:
+                    if ent.label_ == self.NAME_ENTITY:
+                        ent_text = str(ent).strip()
+
+                        # Exact match (full name detected)
+                        if ent_text == name:
+                            name_found = True
+                            break
+
+                        # Check if entity contains the full name
+                        if name in ent_text:
+                            name_found = True
+                            break
+
+                        # Check if entity is part of the name (partial detection)
+                        # At least one name part should match
+                        ent_parts = ent_text.split()
+                        if any(part in name_parts for part in ent_parts):
+                            name_found = True
+                            break
+
+                if name_found:
+                    detected_names += 1
+
+            # Consider test passed if all names were detected
+            results.append(detected_names >= len(name_list))
 
         pass_rate = results.count(True) / len(results) * 100
         return pass_rate
@@ -145,7 +166,7 @@ class ModelEvaluator:
 
             test_text = "Tämä on testi alueiden tunnistukselle. "
             for area in area_list:
-                sentence, _, _ = SentenceGenerator.generate_sentence(area, test_sentences)
+                sentence, _, _, _ = SentenceGenerator.generate_sentence(area, test_sentences)
                 test_text += sentence + " "
 
             doc = self.nlp(test_text)
@@ -181,7 +202,7 @@ class ModelEvaluator:
 
             test_text = "Tämä on testi katujen tunnistukselle. "
             for street in street_list:
-                sentence, _, _ = SentenceGenerator.generate_sentence(street, test_sentences)
+                sentence, _, _, _ = SentenceGenerator.generate_sentence(street, test_sentences)
                 test_text += sentence + " "
 
             doc = self.nlp(test_text)

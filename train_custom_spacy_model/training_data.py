@@ -859,7 +859,7 @@ EVALUATION_SENTENCES = [
     'On hienoa, että kirjastot tarjoavat nyt entistä enemmän työtiloja etätyötä tekeville, mikä on edistänyt monimuotoisen työkulttuurin kehittymistä.',
     'Kiitokset kaupungille nopeasta toiminnasta poistettaessa graffiteja julkisilta seiniltä, se on pitänyt ympäristömme siistinä ja viihtyisänä.',
     'Puistojen leikkipaikkojen säännöllinen huolto ja turvallisuuden tarkastukset ovat olleet todella tärkeitä lasten turvallisuuden kannalta.',
-    'Kaupungin viimeaikainen panostus pyöräteiden kunnossapitoon on tehnyt pyöräilystä miellyttävämmän ja turvallisemman vaihtoehdon kaupunkiliikenteessä.',
+    'Projekti2025: kaupungin viimeaikainen panostus pyöräteiden kunnossapitoon on tehnyt pyöräilystä miellyttävämmän ja turvallisemman vaihtoehdon kaupunkiliikenteessä.',
     'Kesällä on aina niin lämmintä ja aurinkoista, että kaikki haluavat viettää aikaa ulkona.',
     'Talvella sataa lunta ja kadut täytyy aurata säännöllisesti.',
     'Syksy on kaunis vuodenaika värikkäine lehtiensä.',
@@ -867,11 +867,11 @@ EVALUATION_SENTENCES = [
     'Joulukuussa vietetään joulua perheen kanssa.',
     'Helmikuussa on usein kylmintä.',
     'Elokuussa monet ovat lomalla.',
-    'Syyskuussa koulut alkavat taas.',
+    'Luku2025 lukuhaaste alkaa kun koulut alkavat taas.',
     'Lokakuussa lehdet putoavat puista.',
     'Marraskuu on usein harmaa ja sateinen.',
     'Toukokuussa luonto herää henkiin.',
-    'Huhtikuussa sää voi vaihdella paljon.',
+    'Projekti123 laskee ennusteita - sää voi vaihdella paljon.',
     'Kesäkuussa on vuoden pisimmät päivät.',
     'Tammikuussa on uudenvuoden juhla.',
     'Maaliskuussa alkaa kevät hiljalleen.',
@@ -1658,6 +1658,14 @@ FALSE_POSITIVES = [
     'Turha huolehtia turhasta.',
     'Kaikki järjestyy aikanaan.',
     'Kärsivällisyys on hyve tässäkin.',
+    # Address confusion negatives
+    'Kaupunki sijaitsee meren rannalla ja tarjoaa upeat maisemat - rantatiellä näin 30 varpusta.',
+    'Juoksin eilen Tampereen maratonissa 42km',
+    'Asun Espoossa lähellä merta ja nautin kadulla kulkevista puluista.',
+    'Ostin uuden pyörän Haiku 30 ja ajelen sillä usein puistossa.',
+    'Kävin eilen kaupassa ostamassa ruokaa, loppusumma oli 40e ja tapasin myös vanhan ystävän.',
+    'Lähden viikonloppuna Helsinkiin tietä 4 mökille rentoutumaan luonnon keskelle.',
+    'Tykkään lukea kirjoja, suosikkini on Matkustaja 20'
 ]
 
 # Generate additional negative examples using templates

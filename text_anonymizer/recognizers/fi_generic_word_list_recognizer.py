@@ -25,17 +25,27 @@ class GenericWordListRecognizer(PatternRecognizer):
         context: Optional[List[str]] = None,
         supported_language: str = "fi",
         supported_entity: str = "CUSTOM",
-        match_ratio=91,
-        deny_list: [List[str]] = [],
+        match_ratio=95,
+        deny_list: Optional[List[str]] = None,
+        score_override: Optional[float] = None,
     ):
 
         context = context if context else self.CONTEXT
+
+        if deny_list is None:
+            deny_list = []
 
         for w in deny_list:
             if len(w) < self.minimum_word_length:
                 self.minimum_word_length = len(w)
 
+        # match_ratio is the score for exact matches (0-100, will be normalized to 0.0-1.0)
+        # fuzzy_threshold is the minimum ratio for fuzzy/startswith matches (0-100)
         self.match_ratio = match_ratio
+        self.fuzzy_threshold = 85  # Fixed threshold for fuzzy matching
+        # score_override: if set, will override all calculated scores with this fixed value
+        self.score_override = score_override
+
         super().__init__(
             supported_entity=supported_entity,
             patterns=None,
@@ -45,45 +55,93 @@ class GenericWordListRecognizer(PatternRecognizer):
         )
 
     def analyze(self, text, entities, nlp_artifacts=None):
+        """Analyze text for deny list items, supporting multi-word phrases.
+
+        Matches both single-word and multi-word deny list items by checking
+        sequences of tokens against the deny list.
+
+        :param text: Text to analyze
+        :param entities: Entities to consider
+        :param nlp_artifacts: NLP artifacts with tokens
+        :return: List of RecognizerResult objects
+        """
         results = []
         if not nlp_artifacts:
             # No nlp artifacts provided, cannot process
             return results
-        # Iterate trough tokens
-        ratio = 0
-        for token in nlp_artifacts.tokens:
-            t = str(token.text).lower()  # k is already lowercase
-            if len(t) < self.minimum_word_length:
-                continue
-            for k in self.deny_list:
-                match = False
-                if t == k or t.startswith(k):
-                    # exact match
-                    match = True
-                    ratio = self.match_ratio
-                    break
-                else:
-                    # Try fuzzy match
-                    ratio = fuzz.ratio(k, t)
-                    if ratio > self.match_ratio:
-                        # Fuzzy match
-                        match = True
-                        break
-            if match:
-                # Build result and explanation
-                label = self.supported_entities[0]
-                textual_explanation = self.DEFAULT_EXPLANATION.format(ratio=ratio)
 
-                # Build explanation
-                explanation = AnalysisExplanation(
-                    recognizer=self.__class__.__name__,
-                    original_score=ratio,
-                    textual_explanation=textual_explanation,
-                )
-                start_char_index = nlp_artifacts.tokens_indices[token.i]
-                end_char_index = start_char_index + len(t)
-                result = RecognizerResult(label, start_char_index, end_char_index, ratio, explanation)
-                results.append(result)
+        # Create a list of deny list items sorted by word count (longest first)
+        # This ensures multi-word phrases are matched before single words
+        sorted_deny_list = sorted(self.deny_list, key=lambda x: len(x.split()), reverse=True)
+
+        # Iterate through tokens and try to match deny list items
+        i = 0
+        while i < len(nlp_artifacts.tokens):
+            matched = False
+
+            for deny_item in sorted_deny_list:
+                deny_tokens = deny_item.split()
+                deny_tokens_count = len(deny_tokens)
+
+                # Check if we have enough remaining tokens
+                if i + deny_tokens_count > len(nlp_artifacts.tokens):
+                    continue
+
+                # Get the sequence of tokens to compare
+                current_sequence = nlp_artifacts.tokens[i : i + deny_tokens_count]
+                current_text = " ".join([str(t.text).lower() for t in current_sequence])
+
+                # Try exact match first (case-insensitive)
+                ratio = 0
+                match = False
+
+                if current_text == deny_item.lower():
+                    # Exact match - use match_ratio as the score
+                    ratio = self.match_ratio
+                    match = True
+                elif current_text.startswith(deny_item.lower()):
+                    # Prefix match - use fuzzy ratio but with fixed threshold
+                    ratio = fuzz.ratio(deny_item.lower(), current_text)
+                    match = ratio > self.fuzzy_threshold
+                else:
+                    # Fuzzy match - use fuzzy ratio with fixed threshold
+                    ratio = fuzz.ratio(deny_item.lower(), current_text)
+                    match = ratio > self.fuzzy_threshold
+
+                if match:
+                    # Build result and explanation
+                    label = self.supported_entities[0]
+                    textual_explanation = self.DEFAULT_EXPLANATION.format(ratio=ratio)
+
+                    # Build explanation
+                    explanation = AnalysisExplanation(
+                        recognizer=self.__class__.__name__,
+                        original_score=ratio,
+                        textual_explanation=textual_explanation,
+                    )
+
+                    # Calculate character positions
+                    start_char_index = nlp_artifacts.tokens_indices[current_sequence[0].i]
+                    end_char_index = nlp_artifacts.tokens_indices[current_sequence[-1].i] + len(current_sequence[-1].text)
+
+                    # Use score_override if provided, otherwise normalize calculated score (ratio is 0-100)
+                    if self.score_override is not None:
+                        final_score = self.score_override
+                    else:
+                        final_score = ratio / 100.0
+
+                    result = RecognizerResult(label, start_char_index, end_char_index, final_score, explanation)
+                    results.append(result)
+
+                    # Move past the matched tokens
+                    i += deny_tokens_count
+                    matched = True
+                    break
+
+            if not matched:
+                # No match found for current token, move to next
+                i += 1
+
         return results
 
     def invalidate_result(self, pattern_text: str) -> bool:

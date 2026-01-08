@@ -18,7 +18,7 @@ class FiPhoneRecognizer(PatternRecognizer):
         Pattern("Phonenumber local with spaces 2-1-3-3-4", r"\b([0-9]{2,3}\s?[0-9]{1,3}\s?[0-9]{3,4}\s?[0-9]{3,4})\b", 0.7),
         Pattern("Phonenumber local with spaces 3-4-3", r"\b([0-9]{2,3}\s?[0-9]{3,4}\s?[0-9]{3,4})\b", 0.7),
         Pattern("Phonenumber local with spaces 2-5-3", r"\b([0-9]{2,3}\s?[0-9]{3,5}\s?[0-9]{3,5})\b", 0.6),
-        Pattern("Organization number", r"\b(\(?[0-9]{2,3}\)?\s?[0-9]{5,6}\)?)\b", 0.6),
+        Pattern("Organization number", r"\b(\(?[0-9]{2,3}\)?[\s-]?[0-9]{5,7}\)?)\b", 0.6),
     ]
 
     CONTEXT = [

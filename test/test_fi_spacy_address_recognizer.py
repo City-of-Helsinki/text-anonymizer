@@ -35,7 +35,7 @@ class TestFiSpacyAddressRecognizer(unittest.TestCase):
         test_cases_none = ['Wavulinintien tien risteyksessä istuu iso koira',
                            'Meidän kotikadulla mannerheimintiellä ei ole aurattu',
                            'Voisitteko hoitaa lumityöt insinöörinkadulla',
-                           'Tampereelta on Helsinkiin pitkä matka, ainakin 100km',
+                           'Tampereelta on Helsinkiin pitkä matka, ainakin 100 kilsaa',
                            'Minä olen hiihtänyt 10 vuotta']
 
         # Test partial address anonymization

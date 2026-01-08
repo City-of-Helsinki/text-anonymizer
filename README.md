@@ -60,12 +60,37 @@ Startup docker container in flask webapp-mode:
 
 Open http://127.0.0.1:8000/ in browser.
 
-### Docker: Anonymizer streamlit ui
-Startup docker container in streamlit-mode:
+### Docker: Using custom configuration profiles
 
-   MODE=streamlit docker-compose up
+To use custom configuration profiles with Docker, you can map the configuration folder from your host machine to the container using volume mapping.
 
-Open http://127.0.0.1:8501/ in browser.
+#### Method 1: Using docker run with volume mapping
+
+Map your local config directory to override the default configuration:
+
+    docker run -v /path/to/your/config:/app/text_anonymizer/config -v /local_data:/data -it text-anonymizer python anonymize_csv.py /data/input.csv /data/output.csv --column_name=text
+
+This allows you to:
+- Customize recognizer patterns (regex_patterns.json)
+- Modify grant and block lists (grantlist.txt, blocklist.txt)
+- Configure language settings (languages-config.yml)
+
+#### Method 2: Using docker-compose with volume mapping
+
+Add a volume mapping to your compose.yml or create a docker-compose.override.yml:
+
+    version: "3.8"
+    services:
+      text_anonymizer:
+        volumes:
+          - ./my-custom-config:/app/text_anonymizer/config
+          - ./data:/data
+
+Then run:
+
+    MODE=api docker-compose up
+
+Note: Configuration profiles (e.g., config/custom/, config/example/) allow you to use different configurations without modifying the default settings. Mount specific profile directories as needed.
 
 
 ## Anonymizer interfaces
@@ -211,6 +236,127 @@ Open anonymizer web frontend in browser: http://127.0.0.1:8501
 
 You can test this using file: examples/files/sample.csv
 
+## Configuration guide
+
+### Configuration profiles
+
+You can use different configuration profiles to select different sets of recognizers and settings.
+Configuration profiles are located in config/<profile_name>/ folder. For default profile, folder is config/default/ and profile parameter is empty.
+
+#### Using configuration profiles with Docker
+
+When using Docker, configuration files are embedded in the container image. To use custom configurations:
+
+1. Create your configuration directory structure locally:
+
+    mkdir -p my-config/custom
+    
+Create custom configuration files:
+
+    my-config/custom/grantlist.txt
+    my-config/custom/blocklist.txt
+    my-config/custom/regex_patterns.json
+
+2. Mount the configuration directory when running the container:
+
+    docker run -v $(pwd)/my-config:/app/text_anonymizer/config -it text-anonymizer python anonymize_csv.py input.csv output.csv
+
+3. For docker-compose, add volume mapping in compose.yml:
+
+    volumes:
+      - ./my-config:/app/text_anonymizer/config:ro
+
+The :ro suffix makes the mount read-only for better security.
+
+#### Configuration file locations
+
+When using volume mapping, your local config directory should mirror the container structure:
+
+    my-config/
+    ├── blocklist.txt              # Default blocklist
+    ├── grantlist.txt              # Default grantlist
+    ├── languages-config.yml       # Language settings
+    └── custom/                    # Custom profile
+        ├── blocklist.txt
+        ├── grantlist.txt
+        └── regex_patterns.json
+
+### Profile specific grant and block lists
+
+Grant and block lists can be configured per profile.
+For profile "custom", configuration paths are:
+- Grant list: config/custom/grantlist.txt
+- Block list: config/custom/blocklist.txt
+
+Scoring is handled in the same way as in default profile:
+- Exact match: 1.0
+- Fuzzy match is calculated based on Levenshtein distance. For example: 'example12345' vs 'example321' has score of 0.73 that will be less than minimum 0.95.
+
+### Custom regular expression recognizer
+
+RegexRecognizer is configurable general pattern recognizer that uses regex patterns defined in external configuration files. 
+
+Patterns are loaded from JSON files specifying regex patterns, entity names, and confidence scores. 
+The RegexRecognizer class uses these patterns to analyze input text and extract matching entities.
+
+RegexRecognizer supports profile configurations, allowing different sets of patterns to be used based on the specified profile.
+For example: For profile "custom", configuration path is: config/custom/regex_recognizer_config.json
+
+
+```
+┌──────────────────────┐
+│  Configuration File  │
+│  (JSON)              │
+│                      │
+│  Patterns:           │
+│  ├─ name             │
+│  ├─ regex pattern    │
+│  └─ confidence score │
+└──────────┬───────────┘
+           │
+           │ Load Patterns
+           │
+           ▼
+┌────────────────────────────┐
+│  RegexRecognizer           │
+│                            │
+│  __init__(patterns, ...)   │
+│  analyze(text)             │
+│  └─ Returns results        │
+└────────────────────────────┘
+```
+
+
+```json
+{
+  "PHONE_NUMBER": [
+    {
+      "name": "finnish_phone",
+      "pattern": "\\+358\\d{7,9}",
+      "score": 0.95
+    }
+  ]
+}
+```
+
+```
+Input: text = "Call me +359012345678"
+
+1. Load patterns from config cache
+2. For each pattern:
+   - Find all matches from text
+3. Create RecognizerResult for each match:
+   - entity_type (from pattern name)
+   - start position (based on match)
+   - end position (based on match)
+   - confidence score (score from config)
+4. Return results
+
+Output: [RecognizerResult, RecognizerResult, ...]
+```
+
+
+
 ## Accuracy
 
 Note that this tool cannot anonymize 100% of processed text. 
@@ -243,22 +389,30 @@ It will output evaluation results that are included in this README.
 
 ### Evaluation results for fine tuned model
 
-Evaluation dataset consists of 101 sample sentences.
+
+Evaluation dataset consists of 72 sample sentences.
 
 
-Date: 01.12.2025
+Date: 19.12.2025
 
 
 Evaluation results: 
 
 | Entity   |   precision |   recall |   f1-score |   samples |
 |:---------|------------:|---------:|-----------:|----------:|
-| PERSON   |    0.730769 | 0.926829 |   0.817204 |        41 |
-| DATE     |    0.272727 | 0.8      |   0.40678  |        15 |
-| LOC      |    0.46875  | 0.5      |   0.483871 |        30 |
-| CARDINAL |    0.133333 | 1        |   0.235294 |         4 |
-| GPE      |    0.106061 | 0.875    |   0.189189 |         8 |
-| O        |    0        | 0        |   0        |         3 |
+| PERSON   |    0.807692 | 1        |   0.893617 |        21 |
+| DATE     |    0        | 0        |   0        |           |
+| LOC      |    0.827586 | 0.827586 |   0.827586 |        29 |
+| CARDINAL |    0.307692 | 0.666667 |   0.421053 |         6 |
+| GPE      |    0.12     | 0.75     |   0.206897 |         4 |
+| ORDINAL  |    0        | 0        |   0        |           |
+| ORG      |    0.333333 | 0.75     |   0.461538 |         4 |
+| QUANTITY |    0.25     | 1        |   0.4      |         1 |
+| FAC      |    0        | 0        |   0        |           |
+| TIME     |    0.5      | 0.5      |   0.5      |         2 |
+| PRODUCT  |    1        | 1        |   1        |         2 |
+| MONEY    |    0        | 0        |   0        |         2 |
+| PERCENT  |    0        | 0        |   0        |         1 |
 
 
 Date: 12.11.2025
@@ -286,18 +440,20 @@ Evaluation results:
 
 #### Evaluation results
 
-#### Date: 01.12.2025
+#### Date: 19.12.2025
 
 Notable changes: 
 - Spacy model fine tuning pipeline refactored. 
 - Improved street name and name confusion.
 - Fixed and improved evaluation and test scripts.
 
+Date: 19.12.2025
+
 | Test    |   Accuracy |   Missed |   Samples |
 |:--------|-----------:|---------:|----------:|
-| words   |      99.66 |       17 |      5000 |
-| names   |      95.6  |       16 |      5000 |
-| streets |      97.9  |       21 |      1000 |
+| words   |      98.78 |       61 |      5000 |
+| names   |      97.34 |       21 |      5000 |
+| streets |      98.2  |       18 |      1000 |
 
 #### Date: 23.04.2024
 

@@ -7,11 +7,15 @@ This script coordinates:
 3. Model evaluation
 
 Usage:
-    python main_train.py [--base-model MODEL_NAME] [--iterations N] [--no-save]
+    python main_train.py [--base-model MODEL_NAME] [--iterations N] [--no-save] [--disable-gpu]
+
+Environment Variables:
+    DISABLE_GPU=1    Disable GPU/Metal acceleration (alternative to --disable-gpu flag)
 """
 
 import argparse
 import datetime
+import os
 import sys
 
 from data_preparation import prepare_training_data, DataLoader
@@ -24,7 +28,8 @@ def main(
     base_model: str = "fi_core_news_lg",
     iterations: int = None,
     save_model: bool = True,
-    use_entity_ruler: bool = True
+    use_entity_ruler: bool = True,
+    seed: int = None
 ):
     """
     Main training pipeline orchestrator
@@ -34,6 +39,7 @@ def main(
         iterations: Number of training iterations (None = use config default)
         save_model: Whether to save the trained model
         use_entity_ruler: Whether to use entity ruler
+        seed: Random seed for reproducibility (None = use default from data_preparation)
     """
     timestamp = datetime.datetime.now().strftime('%Y.%m.%d %H:%M')
 
@@ -51,7 +57,7 @@ def main(
     print("STEP 1/3: ETL & DATA PREPARATION")
     print("-" * 80)
 
-    train_data, nlp = prepare_training_data(base_model=base_model)
+    train_data, nlp = prepare_training_data(base_model=base_model, seed=seed)
 
     print(f" Data preparation complete: {len(train_data)} training examples")
 
@@ -77,6 +83,9 @@ def main(
         data_loader = DataLoader()
         data_loader.load_all()
 
+        # NOTE: Do NOT add PERSON patterns - individual first/last names break
+        # NER's ability to detect full names like "Matti Korhonen"
+        # The NER component handles person names better through context
         patterns_data = {
             'PRODUCT': data_loader.products,
             'LOC': data_loader.streets,
@@ -168,7 +177,7 @@ def main(
     print("="*80 + "\n")
 
     # Log results to file
-    log_results(timestamp, base_model, config, metrics, test_results, eval_scores)
+    log_results(timestamp, base_model, config, metrics, test_results, eval_scores, seed)
 
     return nlp, metrics, test_results
 
@@ -179,7 +188,8 @@ def log_results(
     config: dict,
     metrics: dict,
     test_results: dict,
-    eval_scores: dict
+    eval_scores: dict,
+    seed: int = None
 ):
     """Log training results to file"""
     log_filename = f"logs/training_{timestamp.replace(':', '.')}.txt"
@@ -226,8 +236,9 @@ def log_results(
     # Also append to training.log for history
     with open("training.log", "a") as f:
         overall_score = test_results.get('overall', 0) if test_results else 0
+        seed_str = f"Seed: {seed}, " if seed is not None else ""
         f.write(
-            f"{timestamp}: Training with {config['iterations']} iterations. "
+            f"{timestamp}: {seed_str}Training with {config['iterations']} iterations. "
             f"F1: {metrics['final_f1']*100:.2f}%, Test Score: {overall_score:.2f}%. "
             f"Model: {base_model}\n"
         )
@@ -259,15 +270,31 @@ if __name__ == "__main__":
         action="store_true",
         help="Do not use entity ruler"
     )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="Random seed for reproducibility (default: use fixed seed from data_preparation)"
+    )
+    parser.add_argument(
+        "--disable-gpu",
+        action="store_true",
+        help="Disable GPU/Metal acceleration (use CPU only, for Windows/Linux/containers)"
+    )
 
     args = parser.parse_args()
+
+    # Set environment variable before importing training_pipeline if GPU should be disabled
+    if args.disable_gpu:
+        os.environ['DISABLE_GPU'] = '1'
 
     try:
         nlp, metrics, test_results = main(
             base_model=args.base_model,
             iterations=args.iterations,
             save_model=not args.no_save,
-            use_entity_ruler=not args.no_ruler
+            use_entity_ruler=not args.no_ruler,
+            seed=args.seed
         )
     except KeyboardInterrupt:
         print("\n\n   Training interrupted by user")
