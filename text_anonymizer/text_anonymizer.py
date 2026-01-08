@@ -177,6 +177,9 @@ class TextAnonymizer:
         For profiles, checks if configuration exists. If found, caches separate analyzer
         engines with profile-specific recognizers. Otherwise returns default analyzer.
 
+        If the profile name is invalid (e.g., contains path traversal attempts),
+        logs a warning and returns the default analyzer.
+
         :param profile: Profile name (optional)
         :return: AnalyzerEngine with appropriate recognizers
         """
@@ -188,30 +191,47 @@ class TextAnonymizer:
         if profile in self._profile_analyzers_cache:
             return self._profile_analyzers_cache[profile]
 
-        # Check if profile has any configuration
-        profile_manager = ProfileConfigProvider()
-        has_regex_patterns = bool(profile_manager.load_profile_regex_patterns(profile))
-        has_blocklist = bool(profile_manager.load_profile_blocklist(profile))
-        has_grantlist = bool(profile_manager.load_profile_grantlist(profile))
+        # Try to load profile configuration
+        # If profile name is invalid, catch exception and use default analyzer
+        try:
+            # Check if profile has any configuration
+            profile_manager = ProfileConfigProvider()
+            has_regex_patterns = bool(profile_manager.load_profile_regex_patterns(profile))
+            has_blocklist = bool(profile_manager.load_profile_blocklist(profile))
+            has_grantlist = bool(profile_manager.load_profile_grantlist(profile))
 
-        # If no profile configuration found, return default analyzer
-        if not (has_regex_patterns or has_blocklist or has_grantlist):
-            logger.debug(f"No configuration found for profile '{profile}', using default analyzer")
+            # If no profile configuration found, return default analyzer
+            if not (has_regex_patterns or has_blocklist or has_grantlist):
+                logger.info(f"No configuration found for profile '{profile}', using default analyzer")
+                return self.analyzer_engine
+
+            # Build and cache new analyzer for this profile
+            # Reuse the nlp_engine from the base analyzer
+            profile_registry = self._build_profile_registry(profile)
+            analyzer_for_profile = AnalyzerEngine(
+                log_decision_process=self.log_decision_process,
+                registry=profile_registry,
+                default_score_threshold=self.score_threshold,
+                supported_languages=self.languages,
+                nlp_engine=self.nlp_engine
+            )
+            self._profile_analyzers_cache[profile] = analyzer_for_profile
+            logger.info(f"Created and cached analyzer for profile: {profile}")
+            return analyzer_for_profile
+
+        except Exception as e:
+            # Import here to avoid circular dependency
+            from text_anonymizer.profile_config_provider import InvalidProfileNameError
+
+            if isinstance(e, InvalidProfileNameError):
+                # Invalid profile name (e.g., path traversal attempt)
+                logger.warning(f"Invalid profile name '{profile}' rejected: {e}. Using default analyzer.")
+            else:
+                # Other unexpected errors
+                logger.error(f"Error loading profile '{profile}': {e}. Using default analyzer.")
+
+            # Return default analyzer without caching the bad profile name
             return self.analyzer_engine
-
-        # Build and cache new analyzer for this profile
-        # Reuse the nlp_engine from the base analyzer
-        profile_registry = self._build_profile_registry(profile)
-        analyzer_for_profile = AnalyzerEngine(
-            log_decision_process=self.log_decision_process,
-            registry=profile_registry,
-            default_score_threshold=self.score_threshold,
-            supported_languages=self.languages,
-            nlp_engine=self.nlp_engine
-        )
-        self._profile_analyzers_cache[profile] = analyzer_for_profile
-        logger.info(f"Created and cached analyzer for profile: {profile}")
-        return analyzer_for_profile
 
     def _build_profile_registry(self, profile_name: str) -> RecognizerRegistry:
         """

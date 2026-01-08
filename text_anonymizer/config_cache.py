@@ -138,7 +138,16 @@ class ConfigCache:
         return self._default_regex_patterns or {}
 
     def get_profile_blocklist(self, profile: str) -> Set[str]:
-        path = self._config_dir / profile / "blocklist.txt"
+        """
+        Get blocklist for a specific profile.
+
+        If the profile doesn't exist, returns an empty set (with debug log).
+
+        :param profile: Profile name (will be validated for security)
+        :return: Set of blocked words/phrases (empty if profile doesn't exist)
+        :raises InvalidProfileNameError: If profile name is invalid
+        """
+        path = self._get_validated_profile_path(profile, self._config_dir, "blocklist.txt")
         mtime = self._safe_mtime(path)
         cached = self._profile_blocklists.get(profile)
         if cached is None or self._profile_blocklists_mtime.get(profile) != mtime:
@@ -147,7 +156,16 @@ class ConfigCache:
         return self._profile_blocklists.get(profile) or set()
 
     def get_profile_grantlist(self, profile: str) -> Set[str]:
-        path = self._config_dir / profile / "grantlist.txt"
+        """
+        Get grantlist for a specific profile.
+
+        If the profile doesn't exist, returns an empty set (with debug log).
+
+        :param profile: Profile name (will be validated for security)
+        :return: Set of granted words/phrases (empty if profile doesn't exist)
+        :raises InvalidProfileNameError: If profile name is invalid
+        """
+        path = self._get_validated_profile_path(profile, self._config_dir, "grantlist.txt")
         mtime = self._safe_mtime(path)
         cached = self._profile_grantlists.get(profile)
         if cached is None or self._profile_grantlists_mtime.get(profile) != mtime:
@@ -156,7 +174,16 @@ class ConfigCache:
         return self._profile_grantlists.get(profile) or set()
 
     def get_profile_regex_patterns(self, profile: str) -> Dict[str, List[Pattern]]:
-        path = self._config_dir / profile / "regex_patterns.json"
+        """
+        Get regex patterns for a specific profile.
+
+        If the profile doesn't exist, returns an empty dict (with debug log).
+
+        :param profile: Profile name (will be validated for security)
+        :return: Dictionary mapping entity types to Pattern lists (empty if profile doesn't exist)
+        :raises InvalidProfileNameError: If profile name is invalid
+        """
+        path = self._get_validated_profile_path(profile, self._config_dir, "regex_patterns.json")
         mtime = self._safe_mtime(path)
         cached = self._profile_regex_patterns.get(profile)
         if cached is None or self._profile_regex_mtime.get(profile) != mtime:
@@ -203,3 +230,39 @@ class ConfigCache:
             return path.stat().st_mtime
         except FileNotFoundError:
             return None
+
+    @staticmethod
+    def _get_validated_profile_path(profile: str, config_dir: Path, filename: str) -> Path:
+        """
+        Validate profile name and construct safe file path.
+
+        This method validates the profile NAME to prevent path traversal attacks,
+        but does NOT require the directory or file to exist. Non-existent profiles
+        will gracefully return empty lists/dicts when read.
+
+        :param profile: Profile name to validate
+        :param config_dir: Base configuration directory
+        :param filename: Name of the file within the profile directory
+        :return: Validated file path (may not exist)
+        :raises InvalidProfileNameError: If profile name is invalid
+        """
+        # Lazy import to avoid circular dependency
+        from text_anonymizer.profile_config_provider import ProfileConfigProvider, InvalidProfileNameError
+
+        # Validate profile name (prevents path traversal, invalid characters, etc.)
+        validated_profile = ProfileConfigProvider.validate_profile_name(profile)
+
+        # Construct profile directory path (doesn't need to exist)
+        profile_path = (config_dir / validated_profile).resolve()
+
+        # Security check: ensure path stays within config_dir
+        try:
+            profile_path.relative_to(config_dir)
+        except ValueError:
+            raise InvalidProfileNameError(
+                f"Profile path escapes base directory: {profile}"
+            )
+
+        # Return full file path
+        return profile_path / filename
+

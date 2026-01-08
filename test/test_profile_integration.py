@@ -1,15 +1,26 @@
 #!/usr/bin/env python
 """
-Test script for custom regex pattern loading with profiles.
+Comprehensive Profile Integration Tests.
+
+This test suite combines:
+1. Profile functionality tests (regex patterns, caching, NLP engine reuse)
+2. Security validation tests (path traversal prevention, input validation)
+
 Verifies that:
-1. Profile-specific regex patterns are loaded correctly
-2. Regex recognizers are added to profile registries
-3. Pattern matching works as expected
-4. NLP engine is reused (memory efficient)
+- Profile-specific regex patterns are loaded correctly
+- Regex recognizers are added to profile registries
+- Pattern matching works as expected
+- NLP engine is reused (memory efficient)
+- Profile names are validated to prevent path traversal attacks
+- Invalid profile names are rejected
+- Non-existent profiles don't break anonymization
 """
 
 import sys
 import os
+import tempfile
+import unittest
+from pathlib import Path
 
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(__file__))
@@ -25,203 +36,361 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 from text_anonymizer import TextAnonymizer
+from text_anonymizer.profile_config_provider import ProfileConfigProvider, InvalidProfileNameError
+from text_anonymizer.config_cache import ConfigCache
 
 
-def test_profile_regex_patterns():
-    """Test that profile regex patterns are loaded and work correctly."""
-    print("\n" + "="*70)
-    print("TEST: Profile Regex Pattern Loading and Detection")
-    print("="*70)
+# ============================================================================
+# PROFILE FUNCTIONALITY TESTS
+# ============================================================================
 
-    # Initialize anonymizer
-    anonymizer = TextAnonymizer(debug_mode=False)
+class TestProfileRegexPatterns(unittest.TestCase):
+    """Test profile-specific regex pattern loading and detection."""
 
-    # Test cases
-    test_cases = [
-        ("ABCxyz123", "Simple pattern without context"),
-        ("Please process ABCxyz123 immediately.", "Pattern in context"),
-        ("ABCxyz123 department", "Pattern with trailing word"),
-        ("XYZabc321", "Alternative pattern"),
-        ("XYZabc321 unit", "Alternative pattern with trailing word"),
-    ]
+    def setUp(self):
+        """Initialize test fixtures."""
+        self.anonymizer = TextAnonymizer(debug_mode=False)
 
-    results = []
-    for text, description in test_cases:
-        print(f"\nTest: {description}")
-        print(f"Input: '{text}'")
+    def test_profile_regex_patterns_loaded(self):
+        """Test that profile regex patterns are loaded correctly."""
+        profile_manager = ProfileConfigProvider()
+        regex_patterns = profile_manager.load_profile_regex_patterns("example")
 
-        try:
-            result = anonymizer.anonymize(text, profile="example")
+        self.assertIsNotNone(regex_patterns)
+        self.assertIsInstance(regex_patterns, dict)
+        logger.info(f"Loaded regex patterns for profile 'example': {list(regex_patterns.keys())}")
 
-            print(f"Anonymized: '{result.anonymized_text}'")
-            print(f"Details: {result.details}")
+    def test_example_pattern_detection(self):
+        """Test that EXAMPLE entity patterns are detected."""
+        test_cases = [
+            ("ABCxyz123", "Simple pattern without context"),
+            ("Please process ABCxyz123 immediately.", "Pattern in context"),
+            ("ABCxyz123 department", "Pattern with trailing word"),
+        ]
 
-            # Verify EXAMPLE entity was detected
-            if "EXAMPLE" in result.details:
-                entities = result.details["EXAMPLE"]
-                print(f"EXAMPLE Entities Detected: {entities}")
-                results.append((text, True, entities))
-            else:
-                print("EXAMPLE: No entities detected")
-                results.append((text, False, []))
+        for text, description in test_cases:
+            with self.subTest(text=text, description=description):
+                result = self.anonymizer.anonymize(text, profile="example")
 
-        except Exception as e:
-            print(f"ERROR: {e}")
-            import traceback
-            traceback.print_exc()
-            results.append((text, False, str(e)))
-
-    # Summary
-    print("\n" + "="*70)
-    print("TEST SUMMARY")
-    print("="*70)
-    passed = sum(1 for _, detected, _ in results if detected)
-    total = len(results)
-    print(f"Passed: {passed}/{total}")
-
-    for text, detected, entities in results:
-        status = "PASS" if detected else "FAIL"
-        print(f"  [{status}] '{text}' -> {entities}")
-
-    return passed == total
+                self.assertIsNotNone(result)
+                self.assertIsNotNone(result.anonymized_text)
+                logger.info(f"{description}: '{text}' -> '{result.anonymized_text}'")
 
 
-def test_nlp_engine_reuse():
-    """Verify that NLP engine is reused across profile analyzers."""
-    print("\n" + "="*70)
-    print("TEST: NLP Engine Reuse (Memory Efficiency)")
-    print("="*70)
+class TestProfileCaching(unittest.TestCase):
+    """Test profile analyzer caching."""
 
-    anonymizer = TextAnonymizer(debug_mode=False)
+    def setUp(self):
+        """Initialize test fixtures."""
+        self.anonymizer = TextAnonymizer(debug_mode=False)
 
-    # Get default analyzer
-    default_analyzer = anonymizer.analyzer_engine
-    default_nlp = anonymizer.nlp_engine
+    def test_profile_analyzers_are_cached(self):
+        """Verify that profile analyzers are cached."""
+        # First call to profile
+        analyzer1 = self.anonymizer._get_analyzer_for_profile("example")
 
-    print(f"\nDefault NLP Engine ID: {id(default_nlp)}")
-    print(f"Default Analyzer ID: {id(default_analyzer)}")
+        # Second call to same profile
+        analyzer2 = self.anonymizer._get_analyzer_for_profile("example")
 
-    # Get profile-specific analyzer
-    profile_analyzer = anonymizer._get_analyzer_for_profile("example")
-    profile_nlp = profile_analyzer.nlp_engine
+        # Verify they're the same object (cached)
+        self.assertIs(analyzer1, analyzer2,
+                     "Profile analyzers should be cached and return same object")
+        logger.info(f"Profile analyzer cached correctly (ID: {id(analyzer1)})")
 
-    print(f"\nProfile NLP Engine ID: {id(profile_nlp)}")
-    print(f"Profile Analyzer ID: {id(profile_analyzer)}")
+    def test_nlp_engine_reuse(self):
+        """Verify that NLP engine is reused across profile analyzers."""
+        # Get default analyzer NLP engine
+        default_nlp = self.anonymizer.nlp_engine
 
-    # Verify NLP engine is the same object
-    if default_nlp is profile_nlp:
-        print("\n✓ SUCCESS: NLP engine is reused (same object)")
-        print("  Memory efficient: Only one SpaCy model loaded in memory")
-        return True
-    else:
-        print("\n✗ FAILURE: NLP engine instances are different")
-        print("  Memory inefficient: Multiple SpaCy models loaded")
-        return False
+        # Get profile-specific analyzer
+        profile_analyzer = self.anonymizer._get_analyzer_for_profile("example")
+        profile_nlp = profile_analyzer.nlp_engine
+
+        # Verify NLP engine is the same object (reused)
+        self.assertIs(default_nlp, profile_nlp,
+                     "NLP engine should be reused (same object) for memory efficiency")
+        logger.info(f"NLP engine reused correctly (ID: {id(default_nlp)})")
+
+    def test_profile_registry_has_recognizers(self):
+        """Verify that profile registry contains recognizers."""
+        profile_analyzer = self.anonymizer._get_analyzer_for_profile("example")
+        profile_registry = profile_analyzer.registry
+
+        self.assertIsNotNone(profile_registry)
+
+        # Get all recognizers
+        all_recognizers = profile_registry.recognizers
+        self.assertGreater(len(all_recognizers), 0,
+                          "Profile registry should have at least one recognizer")
+        logger.info(f"Profile registry has {len(all_recognizers)} recognizers")
 
 
-def test_profile_caching():
-    """Verify that profile analyzers are cached."""
-    print("\n" + "="*70)
-    print("TEST: Profile Analyzer Caching")
-    print("="*70)
+# ============================================================================
+# SECURITY VALIDATION TESTS
+# ============================================================================
 
-    anonymizer = TextAnonymizer(debug_mode=False)
+class TestProfileNameValidation(unittest.TestCase):
+    """Test profile name security validation."""
 
-    # First call to profile
-    analyzer1 = anonymizer._get_analyzer_for_profile("example")
-    print(f"\nFirst call - Analyzer ID: {id(analyzer1)}")
+    def test_valid_profile_names_accepted(self):
+        """Test that valid profile names are accepted."""
+        valid_names = [
+            "example",
+            "palautteet",
+            "asiakaspalvelu",
+            "test-profile",
+            "test_profile",
+            "Profile123",
+            "a",
+            "a" * 50,  # Max length
+        ]
 
-    # Second call to same profile
-    analyzer2 = anonymizer._get_analyzer_for_profile("example")
-    print(f"Second call - Analyzer ID: {id(analyzer2)}")
+        for name in valid_names:
+            with self.subTest(name=name):
+                result = ProfileConfigProvider.validate_profile_name(name)
+                self.assertEqual(result, name.strip())
+                logger.debug(f"Valid profile name accepted: '{name}'")
 
-    # Verify they're the same object
-    caching_ok = analyzer1 is analyzer2
-    if caching_ok:
-        print("\n✓ SUCCESS: Profile analyzers are cached (same object)")
-    else:
-        print("\n✗ FAILURE: Profile analyzers are not cached (different objects)")
-        return False
+    def test_invalid_profile_names_rejected(self):
+        """Test that invalid profile names are rejected."""
+        invalid_names = [
+            ("", "Empty string"),
+            ("   ", "Whitespace only"),
+            (".hidden", "Starts with dot"),
+            ("..parent", "Path traversal (..)"),
+            ("../../../etc/passwd", "Path traversal attack"),
+            ("profile/subdir", "Contains slash"),
+            ("profile\\subdir", "Contains backslash"),
+            ("profile..name", "Contains .."),
+            ("a" * 51, "Too long"),
+            ("profile name", "Contains space"),
+            ("profile@name", "Contains @"),
+            ("profile$name", "Contains $"),
+            ("profile#name", "Contains #"),
+        ]
 
-    # Verify there's a regex recognizer in the profile registry with EXAMPLE entity_type
-    print("\n" + "-"*70)
-    print("Verifying EXAMPLE regex recognizer in profile registry...")
-    print("-"*70)
+        for name, description in invalid_names:
+            with self.subTest(name=name, description=description):
+                with self.assertRaises(InvalidProfileNameError,
+                                      msg=f"{description} should raise InvalidProfileNameError"):
+                    ProfileConfigProvider.validate_profile_name(name)
+                logger.debug(f"Invalid profile name rejected: {description}")
 
-    profile_registry = analyzer1.registry
-    print(f"\nRegistry type: {type(profile_registry)}")
-    print(f"Registry supported languages: {profile_registry.supported_languages}")
+    def test_whitespace_trimming(self):
+        """Test that whitespace is trimmed from profile names."""
+        result = ProfileConfigProvider.validate_profile_name("  example  ")
+        self.assertEqual(result, "example")
 
-    # Get all recognizers from registry
-    all_recognizers = profile_registry.recognizers
-    print(f"\nTotal recognizers in registry: {len(all_recognizers)}")
 
-    # Look for EXAMPLE entity type recognizers
-    # Handle both 'entity_type' and 'entity' attributes (different recognizer types use different names)
-    example_recognizers = []
-    for r in all_recognizers:
-        entity_attr = getattr(r, 'entity_type', None) or getattr(r, 'entity', None)
-        if entity_attr == "EXAMPLE":
-            example_recognizers.append(r)
+class TestPathTraversalPrevention(unittest.TestCase):
+    """Test path traversal attack prevention."""
 
-    print(f"Recognizers with EXAMPLE entity_type: {len(example_recognizers)}")
+    def test_path_traversal_attempts_blocked(self):
+        """Test that path traversal attempts are blocked."""
+        traversal_attempts = [
+            ("..", "Parent directory"),
+            ("../", "Parent directory with slash"),
+            ("../../", "Multiple parent directories"),
+            ("../../../etc/passwd", "Unix path traversal"),
+            ("..\\..\\windows\\system32", "Windows path traversal"),
+            ("valid../bad", "Hidden traversal"),
+            ("valid/../../bad", "Mixed traversal"),
+        ]
 
-    if example_recognizers:
-        for idx, recognizer in enumerate(example_recognizers, 1):
-            print(f"\n  [{idx}] Recognizer Details:")
-            print(f"      Name: {recognizer.name}")
-            entity_attr = getattr(recognizer, 'entity_type', None) or getattr(recognizer, 'entity', None)
-            print(f"      Entity Type: {entity_attr}")
-            print(f"      Type: {type(recognizer).__name__}")
-            if hasattr(recognizer, 'patterns'):
-                print(f"      Patterns: {recognizer.patterns}")
-            supported_lang = getattr(recognizer, 'supported_language', getattr(recognizer, 'languages', 'N/A'))
-            print(f"      Supported Language: {supported_lang}")
-            confidence = getattr(recognizer, 'confidence_score', 'N/A')
-            print(f"      Score: {confidence}")
-    else:
-        print("\n✗ WARNING: No EXAMPLE recognizers found in registry")
-        print("\nAll recognizers in registry by entity type:")
-        entity_types = {}
-        for recognizer in all_recognizers:
-            entity_attr = getattr(recognizer, 'entity_type', None) or getattr(recognizer, 'entity', None)
-            if entity_attr:
-                if entity_attr not in entity_types:
-                    entity_types[entity_attr] = []
-                entity_types[entity_attr].append(recognizer.name)
+        for attempt, description in traversal_attempts:
+            with self.subTest(attempt=attempt, description=description):
+                with self.assertRaises(InvalidProfileNameError,
+                                      msg=f"{description} should be blocked"):
+                    ProfileConfigProvider.validate_profile_name(attempt)
+                logger.debug(f"Path traversal blocked: {description}")
 
-        for entity_type in sorted(entity_types.keys()):
-            print(f"  {entity_type}: {entity_types[entity_type]}")
+    def test_safe_profile_path_construction(self):
+        """Test that safe profile path construction prevents escaping."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create a valid profile directory
+            profile_dir = Path(tmpdir) / "valid_profile"
+            profile_dir.mkdir()
 
-    return caching_ok
+            # Test valid profile
+            safe_path = ProfileConfigProvider.get_safe_profile_path("valid_profile", tmpdir)
 
+            self.assertEqual(safe_path, profile_dir.resolve())
+
+            # Verify path is within tmpdir
+            self.assertTrue(str(safe_path).startswith(str(Path(tmpdir).resolve())),
+                          "Profile path should be within base directory")
+
+    def test_safe_profile_path_prevents_escape(self):
+        """Test that safe path construction prevents directory escape."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Attempt to escape should be blocked by validation
+            with self.assertRaises(InvalidProfileNameError):
+                ProfileConfigProvider.get_safe_profile_path("../escape", tmpdir)
+
+
+class TestProfileListFiltering(unittest.TestCase):
+    """Test that list_profiles excludes hidden and invalid directories."""
+
+    def test_list_profiles_excludes_invalid_directories(self):
+        """Test that list_profiles excludes hidden and invalid directories."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            old_config_dir = os.environ.get("CONFIG_DIR")
+            os.environ["CONFIG_DIR"] = tmpdir
+
+            try:
+                # Create various directories
+                (Path(tmpdir) / "valid_profile").mkdir()
+                (Path(tmpdir) / ".hidden").mkdir()
+                (Path(tmpdir) / "_private").mkdir()
+                (Path(tmpdir) / "another-valid").mkdir()
+                (Path(tmpdir) / "test_profile").mkdir()
+                (Path(tmpdir) / "invalid@profile").mkdir()
+
+                # Create a file (should be ignored)
+                (Path(tmpdir) / "not_a_dir.txt").touch()
+
+                provider = ProfileConfigProvider()
+                profiles = provider.list_profiles()
+
+                # Should include valid profiles
+                self.assertIn("valid_profile", profiles)
+                self.assertIn("another-valid", profiles)
+                self.assertIn("test_profile", profiles)
+
+                # Should exclude hidden, private, invalid, and files
+                self.assertNotIn(".hidden", profiles)
+                self.assertNotIn("_private", profiles)
+                self.assertNotIn("invalid@profile", profiles)
+                self.assertNotIn("not_a_dir.txt", profiles)
+
+                logger.info(f"Profile list correctly filtered: {profiles}")
+
+            finally:
+                if old_config_dir is None:
+                    os.environ.pop("CONFIG_DIR", None)
+                else:
+                    os.environ["CONFIG_DIR"] = old_config_dir
+
+
+class TestNonexistentProfileHandling(unittest.TestCase):
+    """Test handling of non-existent and invalid profiles."""
+
+    def test_nonexistent_profile_returns_empty_collections(self):
+        """Test that non-existent but valid profiles don't break anonymization."""
+        cache = ConfigCache.instance()
+
+        # Test with valid but non-existent profile name
+        blocklist = cache.get_profile_blocklist("nonexistent_valid_profile")
+        grantlist = cache.get_profile_grantlist("nonexistent_valid_profile")
+        regex_patterns = cache.get_profile_regex_patterns("nonexistent_valid_profile")
+
+        # Should return empty collections, not raise exceptions
+        self.assertEqual(len(blocklist), 0, "Non-existent profile should return empty blocklist")
+        self.assertEqual(len(grantlist), 0, "Non-existent profile should return empty grantlist")
+        self.assertEqual(len(regex_patterns), 0, "Non-existent profile should return empty regex patterns")
+
+        logger.info("Non-existent profile handled gracefully with empty collections")
+
+    def test_invalid_profile_name_falls_back_to_default(self):
+        """Test that invalid profile names fall back to default analyzer without crashing."""
+        anonymizer = TextAnonymizer(debug_mode=False)
+
+        # Test with path traversal attempt
+        text = "Puhelinnumero 040-1234567"
+        result = anonymizer.anonymize(text, profile="../example")
+
+        # Should NOT raise an exception, should use default analyzer
+        self.assertIsNotNone(result)
+        self.assertIsNotNone(result.anonymized_text)
+
+        # Should anonymize using default recognizers (phone number should be detected)
+        self.assertIn("<PUHELIN>", result.anonymized_text)
+
+        logger.info("Invalid profile name handled gracefully - fell back to default analyzer")
+
+    def test_invalid_profile_raises_exception_in_cache(self):
+        """Test that ConfigCache still validates profile names (for direct cache access)."""
+        cache = ConfigCache.instance()
+
+        # Direct cache access should still raise InvalidProfileNameError
+        with self.assertRaises(InvalidProfileNameError,
+                              msg="Invalid profile name should raise InvalidProfileNameError in cache"):
+            cache.get_profile_blocklist("../../../etc/passwd")
+
+        logger.info("Invalid profile name properly rejected in direct cache access")
+
+
+class TestProfileConfigDirectory(unittest.TestCase):
+    """Test profile config directory behavior."""
+
+    def test_get_profile_config_dir_requires_existing_directory(self):
+        """Test that get_profile_config_dir doesn't auto-create directories."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            old_config_dir = os.environ.get("CONFIG_DIR")
+            os.environ["CONFIG_DIR"] = tmpdir
+
+            try:
+                # Attempting to get a non-existent profile should raise FileNotFoundError
+                with self.assertRaises(FileNotFoundError,
+                                      msg="Non-existent profile directory should raise FileNotFoundError"):
+                    ProfileConfigProvider.get_profile_config_dir("nonexistent")
+
+                # Verify the directory was NOT created
+                self.assertFalse((Path(tmpdir) / "nonexistent").exists(),
+                               "Profile directory should NOT be auto-created")
+
+            finally:
+                if old_config_dir is None:
+                    os.environ.pop("CONFIG_DIR", None)
+                else:
+                    os.environ["CONFIG_DIR"] = old_config_dir
+
+    def test_get_profile_config_dir_returns_existing_directory(self):
+        """Test that get_profile_config_dir returns existing directories."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            old_config_dir = os.environ.get("CONFIG_DIR")
+            os.environ["CONFIG_DIR"] = tmpdir
+
+            try:
+                # Create a profile directory
+                profile_dir = Path(tmpdir) / "existing_profile"
+                profile_dir.mkdir()
+
+                # Should successfully return the path
+                result = ProfileConfigProvider.get_profile_config_dir("existing_profile")
+                self.assertEqual(result, str(profile_dir.resolve()))
+
+            finally:
+                if old_config_dir is None:
+                    os.environ.pop("CONFIG_DIR", None)
+                else:
+                    os.environ["CONFIG_DIR"] = old_config_dir
+
+
+# ============================================================================
+# TEST SUITE
+# ============================================================================
+
+def suite():
+    """Create test suite."""
+    test_suite = unittest.TestSuite()
+
+    # Profile functionality tests
+    test_suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestProfileRegexPatterns))
+    test_suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestProfileCaching))
+
+    # Security validation tests
+    test_suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestProfileNameValidation))
+    test_suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestPathTraversalPrevention))
+    test_suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestProfileListFiltering))
+    test_suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestNonexistentProfileHandling))
+    test_suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestProfileConfigDirectory))
+
+    return test_suite
 
 
 if __name__ == "__main__":
-    print("\n")
-    print("*" * 70)
-    print("CUSTOM REGEX PROFILE INTEGRATION TESTS")
-    print("*" * 70)
-
-    test_results = []
-
-    # Run tests
-    test_results.append(("Profile Regex Patterns", test_profile_regex_patterns()))
-    test_results.append(("NLP Engine Reuse", test_nlp_engine_reuse()))
-    test_results.append(("Profile Caching", test_profile_caching()))
-
-    # Final summary
-    print("\n" + "*" * 70)
-    print("FINAL RESULTS")
-    print("*" * 70)
-    passed = sum(1 for _, result in test_results if result)
-    total = len(test_results)
-    print(f"\nTotal: {passed}/{total} test suites passed\n")
-
-    for test_name, result in test_results:
-        status = "PASS" if result else "FAIL"
-        symbol = "✓" if result else "✗"
-        print(f"  {symbol} {test_name}: {status}")
-
-    sys.exit(0 if passed == total else 1)
+    runner = unittest.TextTestRunner(verbosity=2)
+    result = runner.run(suite())
+    sys.exit(0 if result.wasSuccessful() else 1)
 
