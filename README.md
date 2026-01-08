@@ -60,13 +60,6 @@ Startup docker container in flask webapp-mode:
 
 Open http://127.0.0.1:8000/ in browser.
 
-### Docker: Anonymizer streamlit ui
-Startup docker container in streamlit-mode:
-
-   MODE=streamlit docker-compose up
-
-Open http://127.0.0.1:8501/ in browser.
-
 
 ## Anonymizer interfaces
 
