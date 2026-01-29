@@ -12,10 +12,10 @@ You can use this tool with docker, GitHub Codespaces or you can configure your o
 
 ### Installation with local python environment
 
-   Requires: Python 3.9, pip   
+   Requires: Python 3.10, pip   
 
     # Install project dependencies
-    pip install -r requirements.txt
+    pip install -r requirements.in 
     # Build custom spacy model
     # Link local custon model library to environment libraries so presidio can load it
     cd train_custom_spacy_model
