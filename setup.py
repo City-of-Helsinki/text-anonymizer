@@ -1,5 +1,4 @@
 import pathlib
-import pkg_resources
 from setuptools import setup
 from typing import List
 
@@ -20,13 +19,15 @@ def get_requirements() -> List[str]:
         return []
 
     with source.open() as requirements:
-        requirements_list = pkg_resources.parse_requirements(requirements)
-        return [str(r) for r in requirements_list]
+        return [
+            line.strip() for line in requirements
+            if line.strip() and not line.startswith('#') and not line.startswith('-')
+        ]
 
 
 setup(
     name='text_anonymizer',
-    version='1.1',
+    version='1.2',
     description='Utility for anonymizing text data',
     author='DataHel',
     author_email='',
